@@ -9,7 +9,7 @@ type turn_dir = CW | CCW
 module Cell =
 struct
   type t = int * int
-  let compare = compare
+  let compare (a:t) (b:t) = compare a b
 
   let of_coord (column, row) =
     if row mod 2 = 0 then
@@ -61,14 +61,18 @@ type config =
     unit_no: int;
     problem: Formats_t.input }
 
+let width config = config.problem.Formats_t.width
+let height config = config.problem.Formats_t.height
+
 exception Invalid_conf
+exception End
 
 let check_unit_bounds conf =
   if not (CSet.is_empty (CSet.inter conf.full_cells conf.unit_cells)) then
     raise Invalid_conf;
   CSet.iter (fun cell ->
     let (c, r) = Cell.to_coord cell in
-    if c < 0 || c >= conf.problem.width || r < 0 || r >= conf.problem.height then
+    if c < 0 || c >= width conf || r < 0 || r >= height conf then
       raise Invalid_conf)
     conf.unit_cells
 
@@ -100,7 +104,7 @@ let spawn_unit conf =
   let shift_y = -List.fold_left (fun acc c -> min acc c.y) (1000000) unit.members in
   let min_x = List.fold_left (fun acc c -> min acc c.x) (1000000) unit.members in
   let max_x = List.fold_left (fun acc c -> max acc c.x) (-1000000) unit.members in
-  let shift_x = ((conf.problem.width-max_x+1)-min_x+1000000)/2-500000 in
+  let shift_x = ((width conf-max_x+1)-min_x+1000000)/2-500000 in
   let unit = {
     members = List.map (fun {x; y} -> {x=x+shift_x; y=y+shift_y}) unit.members;
     pivot = {x=unit.pivot.x+shift_x;y=unit.pivot.y+shift_y}
@@ -112,19 +116,21 @@ let spawn_unit conf =
     rng_state = Int32.(add (mul 1103515245l conf.rng_state) 12345l);
     unit_no = conf.unit_no + 1 }
   in
-  check_unit_bounds conf;
-  res
+  if res.unit_no = conf.problem.sourceLength then raise End
+  else
+    try check_unit_bounds conf; res
+    with Invalid_conf -> raise End
 
 let lock conf =
   let conf = ref {
     conf with full_cells = CSet.union conf.full_cells conf.unit_cells }
   in
-  for r = !conf.problem.height-1 downto 0 do
+  for r = height !conf-1 downto 0 do
     let rec is_full c =
       if c < 0 then true
       else CSet.mem (Cell.of_coord (c, r)) !conf.full_cells && is_full (c-1)
     in
-    if is_full (!conf.problem.width-1) then
+    if is_full (width !conf-1) then
       begin
         conf := { !conf with
           full_cells =
@@ -139,7 +145,13 @@ let lock conf =
   done;
   spawn_unit !conf
 
-let width config = config.problem.Formats_t.width
-let height config = config.problem.Formats_t.height
-
-let init (i : Formats_t.input) : config = assert false
+let init pb seed_id =
+  let conf =
+    { full_cells = CSet.of_list (List.map (fun {x;y} -> Cell.of_coord (x,y)) pb.filled);
+      unit_cells = CSet.empty;
+      unit_pivot = (0, 0);
+      rng_state = Int32.of_int (List.nth pb.sourceSeeds seed_id);
+      unit_no = -1;
+      problem = pb }
+  in
+  spawn_unit conf
