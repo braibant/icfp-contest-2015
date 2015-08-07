@@ -63,7 +63,10 @@ type config =
     problem: Formats_t.input;
 
     score: int;
-    ls_old: int }
+    ls_old: int;
+
+    commands : action list;
+  }
 
 let width config = config.problem.Formats_t.width
 let height config = config.problem.Formats_t.height
@@ -172,7 +175,8 @@ let init pb seed_id =
       unit_no = -1;
       problem = pb;
       ls_old = 0;
-      score = 0 }
+      score = 0;
+      commands = []}
   in
   spawn_unit conf
 
@@ -186,7 +190,7 @@ let action_of_char = function
   | '\t'| '\n'| '\r' -> Nop
   | _ -> assert false
 
-
+(* play an action, without adding the corresponding command *)
 let play_action conf = function
   | Move dir ->
     begin
@@ -199,6 +203,11 @@ let play_action conf = function
       with Invalid_conf -> lock conf
     end
   | Nop -> conf
+
+(* add the command that correspond to an action *)
+let play_action conf command =
+  let conf = play_action conf command in
+  {conf with commands = command :: conf.commands}
 
 let play_game commands pb seed_id =
   let conf = ref (init pb seed_id) in

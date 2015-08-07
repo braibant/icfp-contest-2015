@@ -33,19 +33,29 @@ type config = private {
   problem : Formats_t.input;
 
   score : int;
-  ls_old : int
+  ls_old : int;
+  commands : action list ;      (* in reverse order *)
 }
 
 val width : config -> int
 val height : config -> int
+val action_of_char : char -> action
 
 exception Invalid_conf
 exception End of int
 
+(** {2 Internal functions, do not update the commands field}  *)
 val move : move_dir -> config -> config
 val rotate : turn_dir -> config -> config
 val lock : config -> config
-val init : Formats_t.input -> int -> config
-val action_of_char : char -> action
+
+(** {2 Main functions }  *)
+
+(** Play an action to update a config *)
 val play_action : config -> action -> config
+
+(** Play a complete game  *)
 val play_game : Formats_t.commands -> Formats_t.input -> int -> int
+
+(** Initialize the game  *)
+val init : Formats_t.input -> int -> config

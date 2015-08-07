@@ -39,5 +39,11 @@ let interactive config  =
 
   while !continue do
     Display.show !state;
-    react (Graphics.wait_next_event [Graphics.Key_pressed]).Graphics.key;
-  done
+    try
+      react (Graphics.wait_next_event [Graphics.Key_pressed]).Graphics.key;
+    with
+      Rules.End _ -> continue := false
+  done;
+  let score = !state.Rules.score in
+  let commands = List.rev ((!state).Rules.commands) in
+  score, commands

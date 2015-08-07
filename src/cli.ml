@@ -22,7 +22,18 @@ let solve filename options =
     else 0
   in
   let config = Rules.init problem seed in
-  Simulator.interactive config
+  let score, commands = Simulator.interactive config in
+  let solution = Oracle.empower commands in
+  let output =
+    let open Formats_t in
+    {
+      problemId = problem.id;
+      seed = List.nth problem.sourceSeeds seed;
+      tag = "Ei!";
+      solution
+    } in
+  let output = Formats_j.string_of_output_l [output] in
+  Printf.printf "%s\n%!" output
 
 let main filenames number memory phrase_of_power =
   let options = {number; memory; phrase_of_power} in
