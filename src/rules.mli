@@ -8,7 +8,7 @@ type action =
 
 module Cell :
   sig
-    type t = private int * int
+    type t =  int * int
     val compare : t -> t -> int
     val of_coord : int * int -> t
     val to_coord : t -> int * int
@@ -20,10 +20,10 @@ module Cell :
   end
 
 module CSet :
-  sig
-    include module type of Set.Make(Cell)
-    val map : (elt -> elt option) -> t -> t
-  end
+sig
+  include module type of Set.Make(Cell) with type elt = Cell.t
+  val map : (elt -> elt option) -> t -> t
+end
 
 type config = private {
   full_cells : CSet.t;
