@@ -11,8 +11,16 @@ let solve filename options =
   let lexbuf = Lexing.from_channel channel in
   let problem = Formats_j.read_input lexer lexbuf in
   close_in channel;
-  Printf.printf "Number of seeds:%i\nSeed number?" (List.length problem.Formats_t.sourceSeeds);
-  let seed = int_of_string (read_line ()) in
+  let n = (List.length problem.Formats_t.sourceSeeds) in
+
+  let seed =
+    if n > 1
+    then begin
+      Printf.printf "Number of seeds:%i\nSeed number (1 - %i)?" n n;
+      int_of_string (read_line ()) - 1
+    end
+    else 0
+  in
   let config = Rules.init problem seed in
   Simulator.interactive config
 
