@@ -2,6 +2,10 @@ open Formats_t
 
 type move_dir = E | W | SE | SW
 type turn_dir = CW | CCW
+type action =
+| Turn of turn_dir
+| Move of move_dir
+| Nop
 
 (* North-west tile is at coordinate 0,0.
    Then, going South-West increments by 1,0
@@ -68,7 +72,7 @@ let width config = config.problem.Formats_t.width
 let height config = config.problem.Formats_t.height
 
 exception Invalid_conf
-exception End
+exception End of int
 
 let check_unit_bounds conf =
   if not (CSet.is_empty (CSet.inter conf.full_cells conf.unit_cells)) then
@@ -119,10 +123,10 @@ let spawn_unit conf =
     rng_state = Int32.(add (mul 1103515245l conf.rng_state) 12345l);
     unit_no = conf.unit_no + 1 }
   in
-  if res.unit_no = conf.problem.sourceLength then raise End
+  if res.unit_no = conf.problem.sourceLength then raise (End conf.score)
   else
     try check_unit_bounds conf; res
-    with Invalid_conf -> raise End
+    with Invalid_conf -> raise (End conf.score)
 
 let lock conf =
   let size = CSet.cardinal conf.unit_cells in
@@ -171,3 +175,33 @@ let init pb seed_id =
       score = 0 }
   in
   spawn_unit conf
+
+let action_of_char = function
+  | 'p' | '\''| '!' | '.' | '0' | '3' -> Move W
+  | 'b' | 'c' | 'e' | 'f' | 'y' | '2' -> Move E
+  | 'a' | 'g' | 'h' | 'i' | 'j' | '4' -> Move SW
+  | 'l' | 'm' | 'n' | 'o' | ' ' | '5' -> Move SE
+  | 'd' | 'q' | 'r' | 'v' | 'z' | '1' -> Turn CW
+  | 'k' | 's' | 't' | 'u' | 'w' | 'x' -> Turn CCW
+  | '\t'| '\n'| '\r' -> Nop
+  | _ -> assert false
+
+let play_action conf = function
+  | Move dir ->
+    begin
+      try move dir conf
+      with Invalid_conf -> lock conf
+    end
+  | Turn dir ->
+    begin
+      try rotate dir conf
+      with Invalid_conf -> lock conf
+    end
+  | Nop -> conf
+
+let play_game commands pb seed_id =
+  let conf = ref (init pb seed_id) in
+  try
+    String.iter (fun c -> conf := play_action !conf (action_of_char c)) commands;
+    assert false
+  with End score -> score

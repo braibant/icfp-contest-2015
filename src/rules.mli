@@ -1,5 +1,10 @@
 type move_dir = E | W | SE | SW
 type turn_dir = CW | CCW
+type action =
+| Turn of turn_dir
+| Move of move_dir
+| Nop
+
 
 module Cell :
   sig
@@ -36,9 +41,13 @@ val width : config -> int
 val height : config -> int
 
 exception Invalid_conf
-exception End
+exception End of int
 
 val move : move_dir -> config -> config
 val rotate : turn_dir -> config -> config
 val lock : config -> config
 val init : Formats_t.input -> int -> config
+
+val action_of_char : char -> action
+val play_action : config -> action -> config
+val play_game : Formats_t.commands -> Formats_t.input -> int -> int
