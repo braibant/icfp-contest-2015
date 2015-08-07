@@ -1,0 +1,31 @@
+
+type cell = {x : int; y : int;}
+
+type unit_t = {members: cell list; pivot: cell}
+
+
+type input =
+  { id : int;                   (** A unique number identifying the problem *)
+    units : unit_t list;          (** The various unit configurations
+                                     that may appear in this game.
+                                     There might be multiple entries
+                                     for the same unit.  When a unit
+                                     is spawned, it will start off in
+                                     the orientation specified in this
+                                     field. *)
+    width : int;                (** The number of cells in a row *)
+    height : int;               (** The number of rows on the board *)
+    filled : cell list;         (** Which cells start filled *)
+    sourceLength : int;         (**  How many units in the source *)
+    sourceSeeds : int list;  (** How to generate the source and  how many games to play *)
+  }
+
+type commands = string
+
+type output =
+  {
+    problemId : int;
+    seed : int;
+    tag : int;
+    solution : commands
+  }

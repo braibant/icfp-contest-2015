@@ -1,0 +1,5 @@
+PKG cmdliner
+PKG yojson
+S src
+
+B _build/src
