@@ -17,9 +17,7 @@ let make_output_dir id =
       path
   | exception _ -> Unix.mkdir path 0o755
 
-
-let log input outputs =
-  make_output_dir input.id;
+let utc_tag () =
   let open Unix in
   let time = gmtime (time ()) in
   let date = Printf.sprintf "%02i-%02i-%02iT:%02i:%02i:%02iZ"
@@ -30,6 +28,12 @@ let log input outputs =
       time.tm_min
       time.tm_sec
   in
+  date
+
+
+let log input outputs =
+  make_output_dir input.id;
+  let date = utc_tag () in
   let channel = open_out @@ Printf.sprintf "outputs/%i/%s.json" input.id date in
   let output = Formats_j.string_of_output_l outputs in
   Printf.fprintf channel "%s\n%!" output;
@@ -52,6 +56,6 @@ let publish ~token ~team_id data =
 let publish input outputs =
   publish Global.token Global.team_id (Formats_j.string_of_output_l outputs)
 
-let main input outputs =
+let main ~submit input outputs =
   log input outputs;
-  publish input outputs
+  if submit then publish input outputs else ();
