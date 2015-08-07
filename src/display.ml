@@ -47,7 +47,7 @@ let draw_hex x y i =
   if !cur.(x).(y) <> i then begin
     !cur.(x).(y) <- i;
     (* put y = 0 at the top *)
-    let y = !heigth - 1 - y in
+    let y = !height - 1 - y in
     if y mod 2 = 0
     then draw_tile (x*s*2) (y*s*3) i
     else draw_tile ((x*2 - 1)*s) ((y*3 -1)*s) i
