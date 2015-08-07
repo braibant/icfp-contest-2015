@@ -53,7 +53,7 @@ let interactive ({filenames; number; memory; phrase_of_power} as options)  =
 
 (** AI  *)
 
-let ai filename options tag =
+let ai_f filename options tag =
   let problem = open_in filename in
   let solve seed_id seed =
     Printf.printf "Problem %i, seed %i (%i/%i)-- length %i\n%!"
@@ -88,7 +88,12 @@ let ai filename options tag =
 
 let ai ({filenames; number; memory; phrase_of_power} as options) =
   let tag = String.concat " " ["main"; (Submit.utc_tag ()) ]in
-  List.iter (fun f -> ai f options tag) filenames
+  List.iter (fun file -> ai_f file options tag) filenames
+
+let nuke options =
+  let tag = Submit.utc_tag () in
+  let filenames = Sys.readdir "problems" |> Array.to_list in
+  List.iter (fun file -> ai_f file options tag) filenames
 
 (* Cmdliner code *)
 open Cmdliner
@@ -132,10 +137,19 @@ let ai_info =
   let doc = "Our mighty automated solver" in
   Term.info "ai" ~doc
 
+(* Nuke mode *)
+let nuke_t =
+  Term.(pure nuke $ options_t)
+
+let nuke_info =
+  let doc = "Our mighty automated solver (nuke all problems)" in
+  Term.info "nuke" ~doc
+
 let commands =
   [
     interactive_t, interactive_info;
-    ai_t, ai_info
+    ai_t, ai_info;
+    nuke_t, nuke_info
   ]
 
 let default = interactive_t, interactive_info
