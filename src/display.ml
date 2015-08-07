@@ -6,6 +6,8 @@ type t =
   | Pivot
   | Void
 
+  | Uninitialized               (* Not yet initialized *)
+
 let s = 20;;  (* size of a tile (width and height) *)
 
 let width = ref 0;;
@@ -34,23 +36,30 @@ let draw_tile x y i =
       draw_poly hexagon;
     | Pivot ->
       set_color blue;
-      draw_poly hexagon;
-      moveto (x + s) (y - s);
-      set_color black;
-      lineto (x + s) (y - s2);
+      fill_poly hexagon;
+      (* moveto (x + s) (y - s); *)
+      (* set_color black; *)
+      (* lineto (x + s) (y - s2); *)
     | Void ->
+      set_color background;
+      fill_poly hexagon;
       set_color black;
       draw_poly hexagon;
+    | Uninitialized -> assert false
   end
 
 let draw_hex x y i =
-  (* if !cur.(x).(y) <> i then begin *)
-  (*   !cur.(x).(y) <- i; *)
-    (* put y = 0 at the top *)
-  let cx = (y - x)*1*s in
-  let cy= (x + y)*(2)*s in
+  let x',y' = Rules.Cell.to_coord (x,y) in
+  try
 
-  draw_tile cx ((!height * 2 * s - cy)+s) i
+    if !cur.(x').(y') <> i then begin
+      !cur.(x').(y') <- i;
+      let cx = (y - x)*1*s in
+      let cy= (x + y)*(2)*s in
+      draw_tile cx ((!height * 2 * s - cy)+s) i
+    end
+  with
+    _ -> Printf.printf "%i (%i) %i (%i)" x' (Array.length !cur) y' (Array.length !cur.(0))
 ;;
 
 let draw_config config =
@@ -80,7 +89,7 @@ let draw_score config =
 let init board =
   width := Rules.width board;
   height := Rules.height board;
-  cur := Array.init !width (fun _ -> Array.make !height Void);
+  cur := Array.init !width (fun _ -> Array.make !height Uninitialized);
   let w = 2 * s * !width + s + score_x in
   let h = 2 * s * !height + s / 3 + 10 in
   Graphics.open_graph (Printf.sprintf " %dx%d" w h);
@@ -95,7 +104,6 @@ let init board =
 let close () = Graphics.close_graph ();;
 
 let show config =
-  Graphics.clear_graph ();
   draw_config config;
   draw_score config;
   Graphics.synchronize ();
