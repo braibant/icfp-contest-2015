@@ -1,21 +1,5 @@
 open Rules
 
-type node = {
-  config: config;
-  rot: int;
-  path: action list
-}
-
-module Node =
-struct
-  type t = node
-  let compare a b =
-    Pervasives.compare (a.rot, a.config.unit_pivot)
-      (b.rot, b.config.unit_pivot)
-end
-
-module NSet = Set.Make(Node)
-
 type full_conf =
 | Cont of config
 | End of int
@@ -25,33 +9,27 @@ let find_reachable_states_mem =
 let find_reachable_states init =
   try Rules.HashConfig.find find_reachable_states_mem init
   with Not_found ->
-    let seen = ref NSet.empty in
+    let seen = Rules.HashConfig.create 17 in
     let todo = Queue.create () in
-    Queue.push { config=init; rot=0; path=[] } todo;
+    Queue.push (init, []) todo;
     let ends = ref [] in
     while not (Queue.is_empty todo) do
-      let node = Queue.pop todo in
-      if NSet.mem node !seen then ()
+      let (conf, path) = Queue.pop todo in
+      if Rules.HashConfig.mem seen conf then ()
       else
         begin
-          seen := NSet.add node !seen;
+          Rules.HashConfig.add seen conf ();
           let lock_action = ref None in
           let insert_action act =
             try
               let node =
                 match act with
-                | Turn dir ->
-                  { config = rotate dir node.config;
-                    rot = ((match dir with CW -> 1 | CCW -> 5)+node.rot) mod 6;
-                    path = act::node.path }
-                | Move dir ->
-                  { config = move dir node.config;
-                    rot = node.rot;
-                    path = act::node.path }
+                | Turn dir -> (rotate dir conf, act::path)
+                | Move dir -> (move dir conf, act::path)
                 | Nop -> assert false
               in
               Queue.push node todo
-            with Invalid_conf -> lock_action := Some act
+            with Invalid_conf _ -> lock_action := Some act
           in
           insert_action (Move E);
           insert_action (Move W);
@@ -63,10 +41,10 @@ let find_reachable_states init =
           | None -> ()
           | Some act ->
             let conf =
-              try Cont (play_action node.config act)
+              try Cont (play_action conf act)
               with Rules.End (score, _path) -> End (score)
             in
-            ends := (conf, List.rev (act::node.path))::!ends end
+            ends := (conf, List.rev (act::path))::!ends end
         end
     done;
     assert (!ends <> []);

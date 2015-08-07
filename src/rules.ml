@@ -81,42 +81,58 @@ let cell_of_bit conf bit = Cell.of_coord (coord_of_bit conf bit)
 
 let create_bitv conf = Bitv.create (width conf*height conf) false
 
-exception Invalid_conf
+type invalid_kind = int
+let invalid_overlap = 1
+let invalid_bottom = 2
+let invalid_leftright = 4
+let invalid_up = 8
+let valid = 0
+exception Invalid_conf of invalid_kind
 exception End of int *  action list
 
-let check_unit_overlap conf =
-  if not (Bitv.all_zeros (Bitv.bw_and conf.full_cells conf.unit_cells)) then
-    raise Invalid_conf
+let unit_overlap conf =
+  not (Bitv.all_zeros (Bitv.bw_and conf.full_cells conf.unit_cells))
 
 let check_cell conf cell =
   let c, r = Cell.to_coord cell in
-  if c < 0 || c >= width conf || r < 0 || r >= height conf then
-    raise Invalid_conf
+  let k = 0 in
+  let k = if c < 0 || c >= width conf then k lor invalid_leftright else k in
+  let k = if r < 0 then k lor invalid_up else k in
+  let k = if r >= height conf then k lor invalid_bottom else k in
+  k
 
 let move dir conf =
   let delta = Cell.delta_of_move dir in
   let unit_cells = create_bitv conf in
+  let ik = ref valid in
   Bitv.iteri_true (fun bit ->
     let newcell = Cell.(cell_of_bit conf bit + delta) in
-    check_cell conf newcell;
-    Bitv.set unit_cells (bit_of_cell conf newcell) true)
+    let ik' = check_cell conf newcell in
+    ik := !ik lor ik';
+    if ik' = valid then
+      Bitv.set unit_cells (bit_of_cell conf newcell) true)
     conf.unit_cells;
   let conf =
     { conf with unit_cells; unit_pivot = Cell.(delta + conf.unit_pivot) }
   in
-  check_unit_overlap conf;
-  conf
+  if unit_overlap conf then ik := !ik lor invalid_overlap;
+  if !ik = valid then conf
+  else raise (Invalid_conf !ik)
 
 let rotate dir conf =
   let unit_cells = create_bitv conf in
+  let ik = ref valid in
   Bitv.iteri_true (fun bit ->
     let newcell = Cell.(conf.unit_pivot + rotate dir (cell_of_bit conf bit-conf.unit_pivot)) in
-    check_cell conf newcell;
-    Bitv.set unit_cells (bit_of_cell conf newcell) true)
+    let ik' = check_cell conf newcell in
+    ik := !ik lor ik';
+    if ik' = valid then
+      Bitv.set unit_cells (bit_of_cell conf newcell) true)
     conf.unit_cells;
   let conf = { conf with unit_cells } in
-  check_unit_overlap conf;
-  conf
+  if unit_overlap conf then ik := !ik lor invalid_overlap;
+  if !ik = valid then conf
+  else raise (Invalid_conf !ik)
 
 let spawn_unit conf =
   let rng = Int32.(to_int (logand (shift_right_logical conf.rng_state 16) 0xEFFFl)) in
@@ -142,8 +158,9 @@ let spawn_unit conf =
   if conf.unit_no = conf.problem.sourceLength then
     raise (End (conf.score, List.rev conf.commands))
   else
-    try check_unit_overlap conf; conf
-    with Invalid_conf -> raise (End (conf.score, List.rev conf.commands))
+    if unit_overlap conf
+    then raise (End (conf.score, List.rev conf.commands))
+    else conf
 
 let lock conf =
   let size = ref 0 in
@@ -216,12 +233,12 @@ let play_action conf = function
   | Move dir ->
     begin
       try move dir conf
-      with Invalid_conf -> lock conf
+      with Invalid_conf _ -> lock conf
     end
   | Turn dir ->
     begin
       try rotate dir conf
-      with Invalid_conf -> lock conf
+      with Invalid_conf _ -> lock conf
     end
   | Nop -> conf
 
