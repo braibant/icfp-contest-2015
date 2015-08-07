@@ -59,7 +59,10 @@ type config =
     unit_pivot: Cell.t;
     rng_state: Int32.t;
     unit_no: int;
-    problem: Formats_t.input }
+    problem: Formats_t.input;
+
+    score: int;
+    ls_old: int }
 
 let width config = config.problem.Formats_t.width
 let height config = config.problem.Formats_t.height
@@ -122,9 +125,11 @@ let spawn_unit conf =
     with Invalid_conf -> raise End
 
 let lock conf =
+  let size = CSet.cardinal conf.unit_cells in
   let conf = ref {
     conf with full_cells = CSet.union conf.full_cells conf.unit_cells }
   in
+  let ls = ref 0 in
   for r = height !conf-1 downto 0 do
     let rec is_full c =
       if c < 0 then true
@@ -132,6 +137,7 @@ let lock conf =
     in
     if is_full (width !conf-1) then
       begin
+        incr ls;
         conf := { !conf with
           full_cells =
             CSet.map (fun c ->
@@ -143,7 +149,15 @@ let lock conf =
         }
       end
   done;
-  spawn_unit !conf
+  let conf = !conf and ls = !ls in
+  let points = size + 100*(1+ls)*ls/2 in
+  let lines_bonus = if conf.ls_old > 1 then ((conf.ls_old-1)*points/10) else 0 in
+  let conf = {
+    conf with
+      ls_old = ls;
+      score = conf.score + points + lines_bonus
+  } in
+  spawn_unit conf
 
 let init pb seed_id =
   let conf =
@@ -152,6 +166,8 @@ let init pb seed_id =
       unit_pivot = (0, 0);
       rng_state = Int32.of_int (List.nth pb.sourceSeeds seed_id);
       unit_no = -1;
-      problem = pb }
+      problem = pb;
+      ls_old = 0;
+      score = 0 }
   in
   spawn_unit conf

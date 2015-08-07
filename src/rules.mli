@@ -27,6 +27,9 @@ type config = private {
   rng_state : Int32.t;
   unit_no : int;
   problem : Formats_t.input;
+
+  score : int;
+  ls_old : int
 }
 
 val width : config -> int
