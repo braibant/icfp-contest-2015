@@ -47,7 +47,6 @@ val move : move_dir -> config -> config
 val rotate : turn_dir -> config -> config
 val lock : config -> config
 val init : Formats_t.input -> int -> config
-
 val action_of_char : char -> action
 val play_action : config -> action -> config
 val play_game : Formats_t.commands -> Formats_t.input -> int -> int

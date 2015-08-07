@@ -11,13 +11,10 @@ let solve filename options =
   let lexbuf = Lexing.from_channel channel in
   let problem = Formats_j.read_input lexer lexbuf in
   close_in channel;
-  let open Rules in
-  let config = init problem in
-  Display.init config;
-  Display.show config;
-  ignore (Graphics.(wait_next_event [Key_pressed]));
-  Display.close ();
-  Printf.printf "%s\n" (Formats_j.string_of_input problem)
+  Printf.printf "Number of seeds:%i\nSeed number?" (List.length problem.Formats_t.sourceSeeds);
+  let seed = int_of_string (read_line ()) in
+  let config = Rules.init problem seed in
+  Simulator.interactive config
 
 let main filenames number memory phrase_of_power =
   let options = {number; memory; phrase_of_power} in
