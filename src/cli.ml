@@ -32,8 +32,7 @@ let solve filename options =
       tag = "Ei!";
       solution
     } in
-  let output = Formats_j.string_of_output_l [output] in
-  Printf.printf "%s\n%!" output
+  Submit.main problem [output]
 
 let main filenames number memory phrase_of_power =
   let options = {number; memory; phrase_of_power} in

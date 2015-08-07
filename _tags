@@ -2,10 +2,9 @@
 ".git": not_hygienic
 
 <src/*.{ml,mli,byte,native}>: package(atdgen)
-<src/*> : package(cmdliner)
+true: package(cmdliner)
+true: package(curl)
 
 true: use_graphics
-true: use_unix
-true: package(cmdliner)
 true: debug
 true: annot
