@@ -244,8 +244,10 @@ let play_action conf = function
 
 (* add the command that correspond to an action *)
 let play_action conf command =
-  let conf = play_action conf command in
-  {conf with commands = command :: conf.commands}
+  try
+    let conf = play_action conf command in
+    {conf with commands = command :: conf.commands}
+  with End (score, path) -> raise (End (score, command::path))
 
 let play_game commands pb seed_id =
   let conf = ref (init pb seed_id) in

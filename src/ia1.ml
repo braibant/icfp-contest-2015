@@ -29,7 +29,9 @@ let find_reachable_states init =
                 | Nop -> assert false
               in
               Queue.push node todo
-            with Invalid_conf _ -> lock_action := Some act
+            with Invalid_conf ik ->
+              if ik land (invalid_overlap lor invalid_bottom) <> 0 then
+                lock_action := Some act
           in
           insert_action (Move E);
           insert_action (Move W);
@@ -53,7 +55,7 @@ let find_reachable_states init =
 
 let euristic_score conf =
   match conf with
-  | End sc -> (sc-1000)*10000
+  | End sc -> (sc-10000)*10000
   | Cont conf ->
     let sc = ref (conf.score*10000) in
     Bitv.iteri_true (fun bit ->
@@ -82,13 +84,13 @@ let rec best_euristic_score conf = function
         res
 
 let rec play conf =
-  let ends = find_reachable_states conf in
+  let next = find_reachable_states conf in
   let (_, path) =
     List.fold_left (fun ((scoremax, pathmax) as acc) (conf,path) ->
-      let score = best_euristic_score conf 0 in
+      let score = best_euristic_score conf 1 in
       if score <= scoremax then acc
       else (score, path)
-    ) (min_int, []) ends
+    ) (min_int, []) next
   in
   HashConfig.clear best_euristic_score_mem;
   HashConfig.clear find_reachable_states_mem;
