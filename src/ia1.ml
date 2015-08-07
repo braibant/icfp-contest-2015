@@ -69,6 +69,7 @@ let find_reachable_states init =
             ends := (conf, List.rev (act::node.path))::!ends end
         end
     done;
+    assert (!ends <> []);
     Rules.HashConfig.replace find_reachable_states_mem init !ends;
     !ends
 
@@ -97,7 +98,7 @@ let rec best_euristic_score conf = function
         let res =
           List.fold_left (fun acc (conf, _) ->
             let score = best_euristic_score conf (depth-1) in
-            max acc score) (-1) next
+            max acc score) min_int next
         in
         Rules.HashConfig.replace best_euristic_score_mem conf res;
         res
@@ -109,7 +110,7 @@ let rec play conf =
       let score = best_euristic_score conf 0 in
       if score <= scoremax then acc
       else (score, path)
-    ) (-1, []) ends
+    ) (min_int, []) ends
   in
   HashConfig.clear best_euristic_score_mem;
   HashConfig.clear find_reachable_states_mem;
