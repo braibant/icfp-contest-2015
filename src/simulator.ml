@@ -17,6 +17,8 @@ let interactive config  =
   let mode = ref Sane in
   let react = function
     | c when int_of_char c = 27 -> continue := false
+    | 'p' -> mode := Power
+    | 'v' -> mode := Sane
     | '+' ->
       let s = Display.size () in
       Display.resize (s + 1);
