@@ -10,7 +10,16 @@ let interactive config  =
   let continue = ref true in
   let react = function
     | c when int_of_char c = 27 -> continue := false
+    | '+' ->
+      let s = Display.size () in
+      Display.resize (s + 1);
+      Display.show !state
+    | '-' ->
+      let s = Display.size () in
+      Display.resize (s - 1);
+      Display.show !state
     | c -> state := Rules.play_action !state (Rules.action_of_char c);
+
   in
 
   while !continue do

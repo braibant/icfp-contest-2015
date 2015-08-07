@@ -8,15 +8,15 @@ type t =
 
   | Uninitialized               (* Not yet initialized *)
 
-let s = 20;;  (* size of a tile (width and height) *)
+let s = ref 20;;  (* size of a tile (width and height) *)
 
 let width = ref 0;;
 let height = ref 0;;
 let cur = ref [| |]
 
-
 let draw_tile x y i =
   let open Graphics in
+  let s = ! s in
   let s2 = 2*s in
   let s3 = 3*s in
   let hexagon = [| x + s, y;
@@ -48,17 +48,13 @@ let draw_tile x y i =
 
 let draw_hex x y i =
   let x',y' = Rules.Cell.to_coord (x,y) in
-  try
-
-    if !cur.(x').(y') <> i then begin
-      !cur.(x').(y') <- i;
-      let cx = (y - x)*1*s in
-      let cy= (x + y)*(2)*s in
-      draw_tile cx ((!height * 2 * s - cy)+s) i
-    end
-  with
-    _ -> Printf.printf "%i (%i) %i (%i)" x' (Array.length !cur) y' (Array.length !cur.(0))
-;;
+  let s = ! s in
+  if !cur.(x').(y') <> i then begin
+    !cur.(x').(y') <- i;
+    let cx = (y - x)*1* s in
+    let cy= (x + y)*(2)*s in
+    draw_tile cx ((!height * 2 * s - cy)+s) i
+  end
 
 let draw_config config =
   for i = 0 to !width - 1 do
@@ -88,17 +84,28 @@ let draw_score config =
   Graphics.moveto w h;
   Graphics.draw_string (Printf.sprintf "Score: %i" config.Rules.score)
 
+let resize size =
+  if size <= 0 then ()
+  else
+    begin
+      s := size;
+      cur := Array.init !width (fun _ -> Array.make !height Uninitialized);
+      let s = !s in
+      let w = 2 * s * !width + s + score_x in
+      let h = 2 * s * !height + s / 3 + 10 in
+      Graphics.resize_window w h;
+      Graphics.synchronize ()
+    end
+
+let size () = !s
+
 let init board =
   width := Rules.width board;
   height := Rules.height board;
-  cur := Array.init !width (fun _ -> Array.make !height Uninitialized);
-  let w = 2 * s * !width + s + score_x in
-  let h = 2 * s * !height + s / 3 + 10 in
-  Graphics.open_graph (Printf.sprintf " %dx%d" w h);
-
+  Graphics.open_graph " ";
   Graphics.auto_synchronize false;
-  (* tiles := *)
-  (*   Array.init 10 (fun i -> Graphics.make_image (Array.sub Tiles.raw (i*s) s)); *)
+
+  resize !s;
   draw_config board;
 ;;
 
