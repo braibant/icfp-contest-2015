@@ -38,25 +38,11 @@ struct
     | SW -> (+1, 0)
 end
 
-module CSet =
-struct
-  module M = Set.Make(Cell)
-  include M
-
-  let map f s =
-    let rec aux acc = function
-      | [] -> acc
-      | t::q ->
-        match f t with
-        | None -> aux acc q
-        | Some t -> aux (t::acc) q
-    in
-    of_list (aux [] (elements s))
-end
+(* TODO : loops *)
 
 type config =
-  { full_cells: CSet.t;
-    unit_cells: CSet.t;
+  { full_cells: Bitv.t;
+    unit_cells: Bitv.t;
     unit_pivot: Cell.t;
     rng_state: Int32.t;
     unit_no: int;
@@ -71,38 +57,66 @@ type config =
 let width config = config.problem.Formats_t.width
 let height config = config.problem.Formats_t.height
 
+module HashableConfig =
+struct
+  type t = config
+  let equal config1 config2 =
+    (config1.full_cells, config1.unit_cells, config1.unit_pivot, config1.unit_no) =
+    (config2.full_cells, config2.unit_cells, config2.unit_pivot, config2.unit_no)
+
+  let hash config =
+    Hashtbl.hash (config.full_cells, config.unit_cells,
+                  config.unit_pivot, config.unit_no)
+end
+module HashConfig = Hashtbl.Make(HashableConfig)
+
+let bit_of_coord conf (x,y) = x+y*width conf
+let bit_of_cell conf cell = bit_of_coord conf (Cell.to_coord cell)
+
+let coord_of_bit conf bit =
+  let w = width conf in
+  let r = bit/w in
+  (bit-r*w, r)
+let cell_of_bit conf bit = Cell.of_coord (coord_of_bit conf bit)
+
+let create_bitv conf = Bitv.create (width conf*height conf) false
+
 exception Invalid_conf
 exception End of int *  action list
 
-let check_unit_bounds conf =
-  if not (CSet.is_empty (CSet.inter conf.full_cells conf.unit_cells)) then
-    raise Invalid_conf;
-  CSet.iter (fun cell ->
-    let (c, r) = Cell.to_coord cell in
-    if c < 0 || c >= width conf || r < 0 || r >= height conf then
-      raise Invalid_conf)
-    conf.unit_cells
+let check_unit_overlap conf =
+  if not (Bitv.all_zeros (Bitv.bw_and conf.full_cells conf.unit_cells)) then
+    raise Invalid_conf
+
+let check_cell conf cell =
+  let c, r = Cell.to_coord cell in
+  if c < 0 || c >= width conf || r < 0 || r >= height conf then
+    raise Invalid_conf
 
 let move dir conf =
   let delta = Cell.delta_of_move dir in
-  let res =
-    { conf with
-      unit_cells = CSet.map Cell.(fun c -> Some(c + delta)) conf.unit_cells;
-      unit_pivot = Cell.(delta + conf.unit_pivot) }
+  let unit_cells = create_bitv conf in
+  Bitv.iteri_true (fun bit ->
+    let newcell = Cell.(cell_of_bit conf bit + delta) in
+    check_cell conf newcell;
+    Bitv.set unit_cells (bit_of_cell conf newcell) true)
+    conf.unit_cells;
+  let conf =
+    { conf with unit_cells; unit_pivot = Cell.(delta + conf.unit_pivot) }
   in
-  check_unit_bounds res;
-  res
+  check_unit_overlap conf;
+  conf
 
-(* TODO : loops *)
 let rotate dir conf =
-  let res =
-    { conf with
-      unit_cells = CSet.map
-        Cell.(fun c -> Some (conf.unit_pivot + rotate dir (c-conf.unit_pivot)))
-        conf.unit_cells }
-  in
-  check_unit_bounds res;
-  res
+  let unit_cells = create_bitv conf in
+  Bitv.iteri_true (fun bit ->
+    let newcell = Cell.(conf.unit_pivot + rotate dir (cell_of_bit conf bit-conf.unit_pivot)) in
+    check_cell conf newcell;
+    Bitv.set unit_cells (bit_of_cell conf newcell) true)
+    conf.unit_cells;
+  let conf = { conf with unit_cells } in
+  check_unit_overlap conf;
+  conf
 
 let spawn_unit conf =
   let rng = Int32.(to_int (logand (shift_right_logical conf.rng_state 16) 0xEFFFl)) in
@@ -118,7 +132,9 @@ let spawn_unit conf =
   } in
   let conf = { conf with
     unit_cells =
-      CSet.of_list (List.map (fun {x;y} -> Cell.of_coord (x,y)) unit.members);
+      Bitv.of_list_with_length
+        (List.map (fun {x;y} -> bit_of_coord conf (x,y)) unit.members)
+        (width conf*height conf);
     unit_pivot = Cell.of_coord (unit.pivot.x, unit.pivot.y);
     rng_state = Int32.(add (mul 1103515245l conf.rng_state) 12345l);
     unit_no = conf.unit_no + 1 }
@@ -126,32 +142,33 @@ let spawn_unit conf =
   if conf.unit_no = conf.problem.sourceLength then
     raise (End (conf.score, List.rev conf.commands))
   else
-    try check_unit_bounds conf; conf
+    try check_unit_overlap conf; conf
     with Invalid_conf -> raise (End (conf.score, List.rev conf.commands))
 
 let lock conf =
-  let size = CSet.cardinal conf.unit_cells in
+  let size = ref 0 in
+  Bitv.iteri_true (fun _ -> incr size) conf.unit_cells;
+  let size = !size in
   let conf = ref {
-    conf with full_cells = CSet.union conf.full_cells conf.unit_cells }
+    conf with full_cells = Bitv.bw_or conf.full_cells conf.unit_cells }
   in
   let ls = ref 0 in
   for r = height !conf-1 downto 0 do
     let rec is_full c =
       if c < 0 then true
-      else CSet.mem (Cell.of_coord (c, r)) !conf.full_cells && is_full (c-1)
+      else Bitv.get !conf.full_cells (bit_of_coord !conf (c, r)) && is_full (c-1)
     in
     if is_full (width !conf-1) then
       begin
         incr ls;
-        conf := { !conf with
-          full_cells =
-            CSet.map (fun c ->
-              let (c', r') = Cell.to_coord c in
-              if r' = r then None
-              else if r' < r then Some (Cell.of_coord (c', r'+1))
-              else Some c)
-              !conf.full_cells
-        }
+        let full_cells = create_bitv !conf in
+        Bitv.iteri_true (fun bit ->
+          let c', r' = coord_of_bit !conf bit in
+          if r' = r then ()
+          else if r' < r then Bitv.set full_cells (bit_of_coord !conf (c', r'+1)) true
+          else Bitv.set full_cells (bit_of_coord !conf (c', r')) true)
+          !conf.full_cells;
+        conf := { !conf with full_cells }
       end
   done;
   let conf = !conf and ls = !ls in
@@ -166,8 +183,8 @@ let lock conf =
 
 let init pb seed_id =
   let conf =
-    { full_cells = CSet.of_list (List.map (fun {x;y} -> Cell.of_coord (x,y)) pb.filled);
-      unit_cells = CSet.empty;
+    { full_cells = Bitv.create 0 false;
+      unit_cells = Bitv.create 0 false;
       unit_pivot = (0, 0);
       rng_state = Int32.of_int (List.nth pb.sourceSeeds seed_id);
       unit_no = -1;
@@ -175,6 +192,12 @@ let init pb seed_id =
       ls_old = 0;
       score = 0;
       commands = []}
+  in
+  let conf = { conf with
+    full_cells =
+      Bitv.of_list_with_length
+        (List.map (fun {x;y} -> bit_of_coord conf (x,y)) pb.filled)
+        (width conf*height conf) }
   in
   spawn_unit conf
 

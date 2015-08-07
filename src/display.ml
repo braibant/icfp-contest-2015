@@ -64,11 +64,11 @@ let draw_config config =
     done;
   done;
 
-  let f t ((x,y) : Rules.CSet.elt)  =
+  let f t (x,y)  =
     (* Printf.printf "x:%i  y:%i\n" x y; *)
     draw_hex x y t in
-  CSet.iter (f Full) config.full_cells;
-  CSet.iter (f Unit) config.unit_cells;
+  Bitv.iteri_true (fun bit -> f Full (Rules.cell_of_bit config bit)) config.full_cells;
+  Bitv.iteri_true (fun bit -> f Unit (Rules.cell_of_bit config bit)) config.unit_cells;
   f Pivot config.unit_pivot
 ;;
 

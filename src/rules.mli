@@ -18,15 +18,9 @@ module Cell :
     val delta_of_move : move_dir -> t
   end
 
-module CSet :
-sig
-  include module type of Set.Make(Cell) with type elt = Cell.t
-  val map : (elt -> elt option) -> t -> t
-end
-
 type config = private {
-  full_cells : CSet.t;
-  unit_cells : CSet.t;
+  full_cells : Bitv.t;
+  unit_cells : Bitv.t;
   unit_pivot : Cell.t;
   rng_state : Int32.t;
   unit_no : int;
@@ -39,6 +33,16 @@ type config = private {
 
 val width : config -> int
 val height : config -> int
+
+(* Only full_cells, unit_cells, unit_pivot, unit_no *)
+module HashableConfig : Hashtbl.HashedType with type t = config
+module HashConfig : Hashtbl.S with type key = config
+
+val bit_of_coord: config -> int*int -> int
+val bit_of_cell: config -> Cell.t -> int
+val coord_of_bit: config -> int -> int*int
+val cell_of_bit: config -> int -> Cell.t
+
 val action_of_char : char -> action
 
 exception Invalid_conf
