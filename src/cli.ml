@@ -92,7 +92,7 @@ let ai ({filenames; number; memory; phrase_of_power} as options) =
 
 let nuke options =
   let tag = Submit.utc_tag () in
-  let filenames = Sys.readdir "problems" |> Array.to_list in
+  let filenames = Sys.readdir "problems" |> Array.to_list |> List.sort Pervasives.compare in
   let filenames = List.map (fun s -> "problems/" ^ s) filenames in
   List.iter (fun file -> ai_f file options tag) filenames
 

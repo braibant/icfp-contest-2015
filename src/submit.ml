@@ -1,25 +1,29 @@
 open Formats_t
 
 let check input outputs =
-  (* [ *)
-  (*   "All source seeds appear in outputs" *)
-  (* ] *)
-  List.for_all
-    (fun seed -> List.exists (fun i -> i.seed = seed) outputs)
-    input.sourceSeeds
+  [
+    "All source seeds appear in outputs",
+    List.for_all
+      (fun seed -> List.exists (fun i -> i.seed = seed) outputs)
+      input.sourceSeeds;
 
-  &&
+    "All outputs have the right problem id",
+    List.for_all (fun output -> input.id = output.problemId) outputs;
 
-  List.for_all (fun output -> input.id = output.problemId) outputs
+    "Outputs are not circular",
+    begin let seed_id = ref (-1) in
+    List.for_all (fun output ->
+        incr seed_id;
+        Rules.check_game output.solution input !seed_id
+      ) outputs end;
 
-  &&
-  try
-    List.iteri (fun seed_id output ->
-        assert (Rules.check_game output.solution input seed_id);
-        assert (List.nth input.sourceSeeds seed_id = output.seed)
-      ) outputs;
-    true
-  with e -> print_endline @@ Printexc.to_string e; false
+    "Outputs have the correct seed (output[i].seed = seeds.[i])",
+    begin let seed_id = ref (-1) in
+    List.for_all (fun output ->
+        incr seed_id;
+        (List.nth input.sourceSeeds !seed_id = output.seed)
+      ) outputs end;
+  ]
 
 let make_output_dir id =
   let path = Printf.sprintf "outputs/%i" id in
@@ -69,22 +73,30 @@ let publish input outputs =
   publish Global.token Global.team_id (Formats_j.string_of_output_l outputs)
 
 let main ~submit ~score input outputs  =
-  if check input outputs
+  let checks = check input outputs in
+  let descr = List.map (fun (s,b) ->
+      if b
+      then Printf.sprintf "  %s: OK" s
+      else Printf.sprintf "  %s: FAIL" s
+    ) checks |> String.concat "\n"
+  in
+
+  if List.for_all (snd) checks
   then Printf.printf "Check OK!\n"
-  else Printf.printf "Check failed!\n";
+  else Printf.printf "Check failed!\n%s\n" descr;
 
   let timestamp =  utc_tag () in
 
   log timestamp input outputs;
 
-  if submit then publish input outputs else ();
+    if submit then publish input outputs else ();
 
-  let scoreboard = Scoreboard.read () in
-  let event = Formats_t.{
-      id = input.id;
-      timestamp;
-      outputs;
-      submitted = submit;
-      score;
-    } in
-  Scoreboard.write (event::scoreboard)
+    let scoreboard = Scoreboard.read () in
+    let event = Formats_t.{
+        id = input.id;
+        timestamp;
+        outputs;
+        submitted = submit;
+        score;
+      } in
+    Scoreboard.write (event::scoreboard)

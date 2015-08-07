@@ -247,5 +247,5 @@ let check_game commands pb seed_id =
         valid := !valid && not (HashConfig.mem history !conf);
         HashConfig.add history !conf ();
         conf := play_action !conf (action_of_char c)) commands;
-    assert false
+    !valid
   with End (score, _) -> !valid
