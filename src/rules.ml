@@ -79,8 +79,6 @@ let check_unit_bounds conf =
     raise Invalid_conf;
   CSet.iter (fun cell ->
     let (c, r) = Cell.to_coord cell in
-    let (a, b) = Cell.of_coord (c, r) in
-    Printf.printf "%d %d %d %d %d %d\n%!" c r (fst cell) (snd cell) a b;
     if c < 0 || c >= width conf || r < 0 || r >= height conf then
       raise Invalid_conf)
     conf.unit_cells
