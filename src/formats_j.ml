@@ -10,9 +10,11 @@ type commands = Formats_t.commands
 type output = Formats_t.output = {
   problemId: int;
   seed: int;
-  tag: int;
+  tag: string;
   solution: commands
 }
+
+type output_l = Formats_t.output_l
 
 type input = Formats_t.input = {
   id: int;
@@ -372,7 +374,7 @@ let write_output : _ -> output -> _ = (
       Bi_outbuf.add_char ob ',';
     Bi_outbuf.add_string ob "\"tag\":";
     (
-      Yojson.Safe.write_int
+      Yojson.Safe.write_string
     )
       ob x.tag;
     if !is_first then
@@ -465,7 +467,7 @@ let read_output = (
           | 2 ->
             field_tag := (
               (
-                Ag_oj_run.read_int
+                Ag_oj_run.read_string
               ) p lb
             );
             bits0 := !bits0 lor 0x4;
@@ -546,7 +548,7 @@ let read_output = (
             | 2 ->
               field_tag := (
                 (
-                  Ag_oj_run.read_int
+                  Ag_oj_run.read_string
                 ) p lb
               );
               bits0 := !bits0 lor 0x4;
@@ -577,6 +579,34 @@ let read_output = (
 )
 let output_of_string s =
   read_output (Yojson.Safe.init_lexer ()) (Lexing.from_string s)
+let write__4 = (
+  Ag_oj_run.write_list (
+    write_output
+  )
+)
+let string_of__4 ?(len = 1024) x =
+  let ob = Bi_outbuf.create len in
+  write__4 ob x;
+  Bi_outbuf.contents ob
+let read__4 = (
+  Ag_oj_run.read_list (
+    read_output
+  )
+)
+let _4_of_string s =
+  read__4 (Yojson.Safe.init_lexer ()) (Lexing.from_string s)
+let write_output_l = (
+  write__4
+)
+let string_of_output_l ?(len = 1024) x =
+  let ob = Bi_outbuf.create len in
+  write_output_l ob x;
+  Bi_outbuf.contents ob
+let read_output_l = (
+  read__4
+)
+let output_l_of_string s =
+  read_output_l (Yojson.Safe.init_lexer ()) (Lexing.from_string s)
 let write__3 = (
   Ag_oj_run.write_list (
     Yojson.Safe.write_int

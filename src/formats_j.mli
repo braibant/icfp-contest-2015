@@ -10,9 +10,11 @@ type commands = Formats_t.commands
 type output = Formats_t.output = {
   problemId: int;
   seed: int;
-  tag: int;
+  tag: string;
   solution: commands
 }
+
+type output_l = Formats_t.output_l
 
 type input = Formats_t.input = {
   id: int;
@@ -103,6 +105,26 @@ val read_output :
 val output_of_string :
   string -> output
   (** Deserialize JSON data of type {!output}. *)
+
+val write_output_l :
+  Bi_outbuf.t -> output_l -> unit
+  (** Output a JSON value of type {!output_l}. *)
+
+val string_of_output_l :
+  ?len:int -> output_l -> string
+  (** Serialize a value of type {!output_l}
+      into a JSON string.
+      @param len specifies the initial length
+                 of the buffer used internally.
+                 Default: 1024. *)
+
+val read_output_l :
+  Yojson.Safe.lexer_state -> Lexing.lexbuf -> output_l
+  (** Input JSON data of type {!output_l}. *)
+
+val output_l_of_string :
+  string -> output_l
+  (** Deserialize JSON data of type {!output_l}. *)
 
 val write_input :
   Bi_outbuf.t -> input -> unit

@@ -26,6 +26,8 @@ type output =
   {
     problemId : int;
     seed : int;
-    tag : int;
+    tag : string;
     solution : commands
   }
+
+type output_l = output list
