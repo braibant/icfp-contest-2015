@@ -4,8 +4,20 @@ let check input outputs =
   List.for_all
     (fun seed -> List.exists (fun i -> i.seed = seed) outputs)
     input.sourceSeeds
+
   &&
+
   List.for_all (fun output -> input.id = output.problemId) outputs
+
+  &&
+  try
+    List.iteri (fun seed_id output ->
+        assert (Rules.check_game output.solution input seed_id);
+        assert (List.nth input.sourceSeeds seed_id = output.seed)
+      ) outputs;
+    true
+  with e -> print_endline @@ Printexc.to_string e; false
+
   (* maybe check that there is no cycle ? *)
 
 let make_output_dir id =

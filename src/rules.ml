@@ -236,3 +236,16 @@ let play_game commands pb seed_id =
     String.iter (fun c -> conf := play_action !conf (action_of_char c)) commands;
     assert false
   with End (score, _) -> score
+
+
+let check_game commands pb seed_id =
+  let conf = ref (init pb seed_id) in
+  let history = HashConfig.create 17 in
+  let valid = ref true in
+  try
+    String.iter (fun c ->
+        valid := !valid && not (HashConfig.mem history !conf);
+        HashConfig.add history !conf ();
+        conf := play_action !conf (action_of_char c)) commands;
+    assert false
+  with End (score, _) -> !valid
