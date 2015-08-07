@@ -16,13 +16,10 @@ struct
   let compare (a:t) (b:t) = compare a b
 
   let of_coord (column, row) =
-    if row mod 2 = 0 then
-      (row/2-column, row/2+column)
-    else
-      ((row-1)/2-column, (row-1)/2+column+1)
+    (row asr 1-column, (row+1) asr 1+column)
 
   let to_coord (sw, se) =
-    ((se-sw)/2,sw+se)
+    ((se-sw) asr 1,sw+se)
 
   let (+) (sw1,se1) (sw2,se2) = (sw1+sw2, se1+se2)
   let (-) (sw1,se1) (sw2,se2) = (sw1-sw2, se1-se2)
@@ -79,6 +76,8 @@ let check_unit_bounds conf =
     raise Invalid_conf;
   CSet.iter (fun cell ->
     let (c, r) = Cell.to_coord cell in
+    let (a, b) = Cell.of_coord (c, r) in
+    Printf.printf "%d %d %d %d %d %d\n%!" c r (fst cell) (snd cell) a b;
     if c < 0 || c >= width conf || r < 0 || r >= height conf then
       raise Invalid_conf)
     conf.unit_cells
@@ -111,7 +110,7 @@ let spawn_unit conf =
   let shift_y = -List.fold_left (fun acc c -> min acc c.y) (1000000) unit.members in
   let min_x = List.fold_left (fun acc c -> min acc c.x) (1000000) unit.members in
   let max_x = List.fold_left (fun acc c -> max acc c.x) (-1000000) unit.members in
-  let shift_x = ((width conf-max_x+1)-min_x+1000000)/2-500000 in
+  let shift_x = ((width conf-max_x+1)-min_x) asr 1 in
   let unit = {
     members = List.map (fun {x; y} -> {x=x+shift_x; y=y+shift_y}) unit.members;
     pivot = {x=unit.pivot.x+shift_x;y=unit.pivot.y+shift_y}
