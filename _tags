@@ -2,3 +2,4 @@
 ".git": not_hygienic
 
 <src/*.{ml,mli,byte,native}>: package(atdgen)
+<src/*> : package(cmdliner)
