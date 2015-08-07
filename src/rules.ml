@@ -116,16 +116,17 @@ let spawn_unit conf =
     members = List.map (fun {x; y} -> {x=x+shift_x; y=y+shift_y}) unit.members;
     pivot = {x=unit.pivot.x+shift_x;y=unit.pivot.y+shift_y}
   } in
-  let res = { conf with
+  let conf = { conf with
     unit_cells =
       CSet.of_list (List.map (fun {x;y} -> Cell.of_coord (x,y)) unit.members);
     unit_pivot = Cell.of_coord (unit.pivot.x, unit.pivot.y);
     rng_state = Int32.(add (mul 1103515245l conf.rng_state) 12345l);
     unit_no = conf.unit_no + 1 }
   in
-  if res.unit_no = conf.problem.sourceLength then raise (End conf.score)
+  if conf.unit_no = conf.problem.sourceLength then
+    raise (End conf.score)
   else
-    try check_unit_bounds conf; res
+    try check_unit_bounds conf; conf
     with Invalid_conf -> raise (End conf.score)
 
 let lock conf =

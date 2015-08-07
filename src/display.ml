@@ -33,13 +33,11 @@ let draw_tile x y i =
       fill_poly hexagon;
     | Unit ->
       set_color blue;
-      draw_poly hexagon;
-    | Pivot ->
-      set_color blue;
       fill_poly hexagon;
-      (* moveto (x + s) (y - s); *)
-      (* set_color black; *)
-      (* lineto (x + s) (y - s2); *)
+    | Pivot ->
+      moveto (x + s) (y - s);
+      set_color black;
+      lineto (x + s) (y - s2);
     | Void ->
       set_color background;
       fill_poly hexagon;
@@ -71,7 +69,7 @@ let draw_config config =
   done;
 
   let f t ((x,y) : Rules.CSet.elt)  =
-    Printf.printf "x:%i  y:%i\n" x y;
+    (* Printf.printf "x:%i  y:%i\n" x y; *)
     draw_hex x y t in
   CSet.iter (f Full) config.full_cells;
   CSet.iter (f Unit) config.unit_cells;

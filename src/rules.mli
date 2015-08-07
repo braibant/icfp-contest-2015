@@ -5,7 +5,6 @@ type action =
 | Move of move_dir
 | Nop
 
-
 module Cell :
   sig
     type t =  int * int
