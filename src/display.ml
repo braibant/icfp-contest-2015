@@ -46,6 +46,8 @@ let draw_tile x y i =
 let draw_hex x y i =
   if !cur.(x).(y) <> i then begin
     !cur.(x).(y) <- i;
+    (* put y = 0 at the top *)
+    let y = !heigth - 1 - y in
     if y mod 2 = 0
     then draw_tile (x*s*2) (y*s*3) i
     else draw_tile ((x*2 - 1)*s) ((y*3 -1)*s) i
@@ -64,8 +66,8 @@ let init board =
   width := Rules.width board;
   height := Rules.height board;
   cur := Array.init !width (fun _ -> Array.make !height Void);
-  let w = s * !width in
-  let h = s * !height in
+  let w = 2 * s * !width in
+  let h = 3 * s * !height in
   Graphics.open_graph (Printf.sprintf " %dx%d" w h);
   Graphics.auto_synchronize false;
   (* tiles := *)
