@@ -33,8 +33,8 @@ let interactive config  =
     | 'k' -> state := Rules.play_action !state Rules.(Turn CCW)
     | 'u' -> state := Rules.play_action !state Rules.(Move SW)
     | 'o' -> state := Rules.play_action !state Rules.(Move SE)
+    | 'a' -> state := Ia1.play !state
     | _ -> ()
-
   in
 
   while !continue do
@@ -42,7 +42,9 @@ let interactive config  =
     try
       react (Graphics.wait_next_event [Graphics.Key_pressed]).Graphics.key;
     with
-      Rules.End _ -> continue := false
+      Rules.End score ->
+        Printf.printf "Final score : %d\n" score;
+        continue := false
   done;
   let score = !state.Rules.score in
   let commands = List.rev ((!state).Rules.commands) in
