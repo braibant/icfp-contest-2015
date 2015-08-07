@@ -69,12 +69,19 @@ let draw_config config =
   f Pivot config.unit_pivot
 ;;
 
+let score_x = 100
+
+let draw_score config =
+  let w = Graphics.size_x () - score_x in
+  let h = Graphics.size_y () / 2 in
+  Graphics.moveto w h;
+  Graphics.draw_string (Printf.sprintf "Score: %i" config.Rules.score)
 
 let init board =
   width := Rules.width board;
   height := Rules.height board;
   cur := Array.init !width (fun _ -> Array.make !height Void);
-  let w = 2 * s * !width + s + 10 in
+  let w = 2 * s * !width + s + score_x in
   let h = 2 * s * !height + s / 3 + 10 in
   Graphics.open_graph (Printf.sprintf " %dx%d" w h);
 
@@ -84,9 +91,11 @@ let init board =
   draw_config board;
 ;;
 
+
 let close () = Graphics.close_graph ();;
 
 let show config =
   Graphics.clear_graph ();
   draw_config config;
+  draw_score config;
   Graphics.synchronize ();
