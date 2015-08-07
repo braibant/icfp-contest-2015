@@ -67,5 +67,8 @@ val play_action : config -> action -> config
 (** Play a complete game  *)
 val play_game : Formats_t.commands -> Formats_t.input -> int -> int
 
+(** Check a complete game *)
+val check_game : Formats_t.commands -> Formats_t.input -> int -> bool
+
 (** Initialize the game  *)
 val init : Formats_t.input -> int -> config
