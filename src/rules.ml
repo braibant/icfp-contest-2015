@@ -186,6 +186,7 @@ let action_of_char = function
   | '\t'| '\n'| '\r' -> Nop
   | _ -> assert false
 
+
 let play_action conf = function
   | Move dir ->
     begin
