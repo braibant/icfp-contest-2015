@@ -9,9 +9,15 @@ let solve filename options =
   let lexer = Yojson.init_lexer () in
   let channel = Pervasives.open_in filename in
   let lexbuf = Lexing.from_channel channel in
-  let input = Formats_j.read_input lexer lexbuf in
+  let problem = Formats_j.read_input lexer lexbuf in
   close_in channel;
-  input
+  let open Rules in
+  let config = init problem in
+  Display.init config;
+  Display.show config;
+  ignore (Graphics.(wait_next_event [Key_pressed]));
+  Display.close ();
+  Printf.printf "%s\n" (Formats_j.string_of_input problem)
 
 let main filenames number memory phrase_of_power =
   let options = {number; memory; phrase_of_power} in

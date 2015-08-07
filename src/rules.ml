@@ -138,3 +138,8 @@ let lock conf =
       end
   done;
   spawn_unit !conf
+
+let width config = config.problem.Formats_t.width
+let height config = config.problem.Formats_t.height
+
+let init (i : Formats_t.input) : config = assert false

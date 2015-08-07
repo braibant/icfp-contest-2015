@@ -30,3 +30,8 @@ exception Invalid_conf
 val check_unit_bounds : config -> unit
 val move : move_dir -> config -> config
 val rotate : turn_dir -> config -> config
+
+val width : config -> int
+val height : config -> int
+
+val init : Formats_t.input -> config
