@@ -141,7 +141,7 @@ let spawn_unit conf =
   let shift_y = -List.fold_left (fun acc c -> min acc c.y) (1000000) unit.members in
   let min_x = List.fold_left (fun acc c -> min acc c.x) (1000000) unit.members in
   let max_x = List.fold_left (fun acc c -> max acc c.x) (-1000000) unit.members in
-  let shift_x = ((width conf-max_x+1)-min_x) asr 1 in
+  let shift_x = (width conf-max_x-min_x-1) asr 1 in
   let unit = {
     members = List.map (fun {x; y} -> {x=x+shift_x; y=y+shift_y}) unit.members;
     pivot = {x=unit.pivot.x+shift_x;y=unit.pivot.y+shift_y}
