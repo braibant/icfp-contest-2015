@@ -247,7 +247,7 @@ let play_action conf command =
   try
     let conf = play_action conf command in
     {conf with commands = command :: conf.commands}
-  with End (score, path) -> raise (End (score, command::path))
+  with End (score, path) -> raise (End (score, path@[command]))
 
 let play_game commands pb seed_id =
   let conf = ref (init pb seed_id) in
