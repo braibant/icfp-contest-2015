@@ -61,23 +61,19 @@ let ai filename options tag =
       (List.length problem.Formats_t.sourceSeeds)
       problem.Formats_t.sourceLength;
     let state = ref (Rules.init problem seed) in
-    let continue = ref true in
     let n = ref 0 in
-    while !continue do
-      incr n;
-      if !n mod 10 = 0
-      then Printf.printf "Turn %i/%i\n%!" !n       problem.Formats_t.sourceLength;
-      try
-
+    try
+      while true do
+        incr n;
+        if !n mod 10 = 0
+        then Printf.printf "Turn %i/%i\n%!" !n       problem.Formats_t.sourceLength;
         state := Ia1.play !state
-      with Rules.End score ->
-        Printf.printf "Final score : %d\n" score;
-        continue := false
-    done;
-    let score = !state.Rules.score in
-    let commands = List.rev ((!state).Rules.commands) in
-    let solution = Oracle.empower commands in
-    make_output problem seed solution tag
+      done;
+      assert false
+    with Rules.End (score,commands) ->
+      Printf.printf "Final score : %d\n" score;
+      let solution = Oracle.empower commands in
+      make_output problem seed solution tag
   in
   let outputs = List.map solve problem.Formats_t.sourceSeeds in
   Submit.main ~submit:options.submit problem outputs

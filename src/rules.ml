@@ -72,7 +72,7 @@ let width config = config.problem.Formats_t.width
 let height config = config.problem.Formats_t.height
 
 exception Invalid_conf
-exception End of int
+exception End of int *  action list
 
 let check_unit_bounds conf =
   if not (CSet.is_empty (CSet.inter conf.full_cells conf.unit_cells)) then
@@ -124,10 +124,10 @@ let spawn_unit conf =
     unit_no = conf.unit_no + 1 }
   in
   if conf.unit_no = conf.problem.sourceLength then
-    raise (End conf.score)
+    raise (End (conf.score, List.rev conf.commands))
   else
     try check_unit_bounds conf; conf
-    with Invalid_conf -> raise (End conf.score)
+    with Invalid_conf -> raise (End (conf.score, List.rev conf.commands))
 
 let lock conf =
   let size = CSet.cardinal conf.unit_cells in
@@ -212,4 +212,4 @@ let play_game commands pb seed_id =
   try
     String.iter (fun c -> conf := play_action !conf (action_of_char c)) commands;
     assert false
-  with End score -> score
+  with End (score, _) -> score

@@ -42,7 +42,7 @@ val height : config -> int
 val action_of_char : char -> action
 
 exception Invalid_conf
-exception End of int
+exception End of int * action list
 
 (** {2 Internal functions, do not update the commands field}  *)
 val move : move_dir -> config -> config

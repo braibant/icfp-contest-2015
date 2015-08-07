@@ -37,15 +37,12 @@ let interactive config  =
     | _ -> ()
   in
 
-  while !continue do
-    Display.show !state;
-    try
+  try while !continue do
+      Display.show !state;
       react (Graphics.wait_next_event [Graphics.Key_pressed]).Graphics.key;
-    with
-      Rules.End score ->
-        Printf.printf "Final score : %d\n" score;
-        continue := false
-  done;
-  let score = !state.Rules.score in
-  let commands = List.rev ((!state).Rules.commands) in
-  score, commands
+    done;
+    Printf.printf "Interrupted\n%!"; raise Exit
+  with
+    Rules.End (score,commands) ->
+    Printf.printf "Final score : %d\n" score;
+    score, commands

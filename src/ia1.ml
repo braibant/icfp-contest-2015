@@ -60,7 +60,7 @@ let find_reachable_states init =
         | Some act ->
           let conf =
             try Cont (play_action node.config act)
-            with Rules.End score -> End score
+            with Rules.End (score, _path) -> End (score)
           in
           ends := (conf, List.rev (act::node.path))::!ends end
       end
