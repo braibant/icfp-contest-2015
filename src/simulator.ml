@@ -3,7 +3,18 @@ exception Quit
 type mode = | Power        (* feed the letters directly *)
             | Sane         (* keep our sanity  *)
 
-let interactive config  =
+let mysleep n =
+  let start = Unix.gettimeofday() in
+  let rec delay t =
+    try
+      ignore (Unix.select [] [] [] t)
+    with Unix.Unix_error(Unix.EINTR, _, _) ->
+      let now = Unix.gettimeofday() in
+      let remaining = start +. n -. now in
+      if remaining > 0.0 then delay remaining in
+  delay n
+
+let interactive ~prefix config  =
   Display.init config;
   Printf.printf "Command:\n \
                  ESC: quit\n \
@@ -15,7 +26,10 @@ let interactive config  =
   let state = ref config in
   let continue = ref true in
   let mode = ref Sane in
-  let react = function
+
+  let react c =
+    Printf.printf "react %c\n%!" c;
+    match c with
     | c when int_of_char c = 27 -> continue := false
     | 'p' -> mode := Power
     | 'v' -> mode := Sane
@@ -38,7 +52,13 @@ let interactive config  =
     | 'a' -> state := Ia1.play !state
     | _ -> ()
   in
-
+  String.iter
+    (fun c ->
+       Printf.printf "step: %c\n%!" c;
+       Display.show !state;
+       state := Rules.play_action !state (Rules.action_of_char c);
+       mysleep 0.5
+    ) prefix;
   try while !continue do
       Display.show !state;
       react (Graphics.wait_next_event [Graphics.Key_pressed]).Graphics.key;

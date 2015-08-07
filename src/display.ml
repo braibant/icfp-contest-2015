@@ -49,12 +49,14 @@ let draw_tile x y i =
 let draw_hex x y i =
   let x',y' = Rules.Cell.to_coord (x,y) in
   let s = ! s in
+  try
   if !cur.(x').(y') <> i then begin
     !cur.(x').(y') <- i;
     let cx = (y - x)*1* s in
     let cy= (x + y)*(2)*s in
     draw_tile cx ((!height * 2 * s - cy)+s) i
   end
+  with _ -> ()
 
 let draw_config config =
   for i = 0 to !width - 1 do

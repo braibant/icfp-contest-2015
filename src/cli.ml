@@ -29,7 +29,7 @@ let options filenames number memory phrase_of_power submit =
 
 
 (** Interactive *)
-let interactive filename options tag =
+let interactive filename options tag prefix : unit =
   let problem = open_in filename in
   let n = (List.length problem.Formats_t.sourceSeeds) in
   let seed =
@@ -41,15 +41,15 @@ let interactive filename options tag =
     else 0
   in
   let config = Rules.init problem seed in
-  let score, commands = Simulator.interactive config in
+  let score, commands = Simulator.interactive ~prefix config in
   let solution = Oracle.empower commands in
   let output = make_output problem seed solution tag in
   let submit = n = 1 && options.submit in
   Submit.main ~score ~submit problem [output]
 
-let interactive ({filenames; number; memory; phrase_of_power} as options)  =
+let interactive ({filenames; number; memory; phrase_of_power} as options) prefix =
   let tag = String.concat " " ["int"; (Submit.utc_tag ()) ]in
-  List.iter (fun f -> interactive f options tag) filenames
+  List.iter (fun f -> interactive f options tag prefix) filenames
 
 (** AI  *)
 
@@ -119,12 +119,16 @@ let submit =
   let doc = "Submit the output to the scoring server" in
   Arg.(value & flag & info ["score"] ~doc)
 
+let prefix =
+  let doc = "String to be played interactively" in
+  Arg.(value & opt (string) "" & info ["prefix"] ~doc)
+
 let options_t =
   Term.(pure options $ filenames $ number $ memory $ phrase_of_power $ submit)
 
 (* Interavtive mode *)
 let interactive_t =
-  Term.(pure interactive $ options_t)
+  Term.(pure interactive $ options_t $ prefix)
 
 let interactive_info =
   let doc = "Our mighty interactive solver" in
