@@ -16,6 +16,16 @@ type output = Formats_t.output = {
 
 type output_l = Formats_t.output_l
 
+type event = Formats_t.event = {
+  id: int;
+  timestamp: string;
+  outputs: output_l;
+  submitted: bool;
+  score: int
+}
+
+type scoreboard = Formats_t.scoreboard
+
 type input = Formats_t.input = {
   id: int;
   units: unit_t list;
@@ -125,6 +135,46 @@ val read_output_l :
 val output_l_of_string :
   string -> output_l
   (** Deserialize JSON data of type {!output_l}. *)
+
+val write_event :
+  Bi_outbuf.t -> event -> unit
+  (** Output a JSON value of type {!event}. *)
+
+val string_of_event :
+  ?len:int -> event -> string
+  (** Serialize a value of type {!event}
+      into a JSON string.
+      @param len specifies the initial length
+                 of the buffer used internally.
+                 Default: 1024. *)
+
+val read_event :
+  Yojson.Safe.lexer_state -> Lexing.lexbuf -> event
+  (** Input JSON data of type {!event}. *)
+
+val event_of_string :
+  string -> event
+  (** Deserialize JSON data of type {!event}. *)
+
+val write_scoreboard :
+  Bi_outbuf.t -> scoreboard -> unit
+  (** Output a JSON value of type {!scoreboard}. *)
+
+val string_of_scoreboard :
+  ?len:int -> scoreboard -> string
+  (** Serialize a value of type {!scoreboard}
+      into a JSON string.
+      @param len specifies the initial length
+                 of the buffer used internally.
+                 Default: 1024. *)
+
+val read_scoreboard :
+  Yojson.Safe.lexer_state -> Lexing.lexbuf -> scoreboard
+  (** Input JSON data of type {!scoreboard}. *)
+
+val scoreboard_of_string :
+  string -> scoreboard
+  (** Deserialize JSON data of type {!scoreboard}. *)
 
 val write_input :
   Bi_outbuf.t -> input -> unit

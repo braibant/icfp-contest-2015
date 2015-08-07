@@ -16,6 +16,16 @@ type output = Formats_t.output = {
 
 type output_l = Formats_t.output_l
 
+type event = Formats_t.event = {
+  id: int;
+  timestamp: string;
+  outputs: output_l;
+  submitted: bool;
+  score: int
+}
+
+type scoreboard = Formats_t.scoreboard
+
 type input = Formats_t.input = {
   id: int;
   units: unit_t list;
@@ -607,6 +617,320 @@ let read_output_l = (
 )
 let output_l_of_string s =
   read_output_l (Yojson.Safe.init_lexer ()) (Lexing.from_string s)
+let write_event : _ -> event -> _ = (
+  fun ob x ->
+    Bi_outbuf.add_char ob '{';
+    let is_first = ref true in
+    if !is_first then
+      is_first := false
+    else
+      Bi_outbuf.add_char ob ',';
+    Bi_outbuf.add_string ob "\"id\":";
+    (
+      Yojson.Safe.write_int
+    )
+      ob x.id;
+    if !is_first then
+      is_first := false
+    else
+      Bi_outbuf.add_char ob ',';
+    Bi_outbuf.add_string ob "\"timestamp\":";
+    (
+      Yojson.Safe.write_string
+    )
+      ob x.timestamp;
+    if !is_first then
+      is_first := false
+    else
+      Bi_outbuf.add_char ob ',';
+    Bi_outbuf.add_string ob "\"outputs\":";
+    (
+      write_output_l
+    )
+      ob x.outputs;
+    if !is_first then
+      is_first := false
+    else
+      Bi_outbuf.add_char ob ',';
+    Bi_outbuf.add_string ob "\"submitted\":";
+    (
+      Yojson.Safe.write_bool
+    )
+      ob x.submitted;
+    if !is_first then
+      is_first := false
+    else
+      Bi_outbuf.add_char ob ',';
+    Bi_outbuf.add_string ob "\"score\":";
+    (
+      Yojson.Safe.write_int
+    )
+      ob x.score;
+    Bi_outbuf.add_char ob '}';
+)
+let string_of_event ?(len = 1024) x =
+  let ob = Bi_outbuf.create len in
+  write_event ob x;
+  Bi_outbuf.contents ob
+let read_event = (
+  fun p lb ->
+    Yojson.Safe.read_space p lb;
+    Yojson.Safe.read_lcurl p lb;
+    let field_id = ref (Obj.magic 0.0) in
+    let field_timestamp = ref (Obj.magic 0.0) in
+    let field_outputs = ref (Obj.magic 0.0) in
+    let field_submitted = ref (Obj.magic 0.0) in
+    let field_score = ref (Obj.magic 0.0) in
+    let bits0 = ref 0 in
+    try
+      Yojson.Safe.read_space p lb;
+      Yojson.Safe.read_object_end lb;
+      Yojson.Safe.read_space p lb;
+      let f =
+        fun s pos len ->
+          if pos < 0 || len < 0 || pos + len > String.length s then
+            invalid_arg "out-of-bounds substring position or length";
+          match len with
+            | 2 -> (
+                if String.unsafe_get s pos = 'i' && String.unsafe_get s (pos+1) = 'd' then (
+                  0
+                )
+                else (
+                  -1
+                )
+              )
+            | 5 -> (
+                if String.unsafe_get s pos = 's' && String.unsafe_get s (pos+1) = 'c' && String.unsafe_get s (pos+2) = 'o' && String.unsafe_get s (pos+3) = 'r' && String.unsafe_get s (pos+4) = 'e' then (
+                  4
+                )
+                else (
+                  -1
+                )
+              )
+            | 7 -> (
+                if String.unsafe_get s pos = 'o' && String.unsafe_get s (pos+1) = 'u' && String.unsafe_get s (pos+2) = 't' && String.unsafe_get s (pos+3) = 'p' && String.unsafe_get s (pos+4) = 'u' && String.unsafe_get s (pos+5) = 't' && String.unsafe_get s (pos+6) = 's' then (
+                  2
+                )
+                else (
+                  -1
+                )
+              )
+            | 9 -> (
+                match String.unsafe_get s pos with
+                  | 's' -> (
+                      if String.unsafe_get s (pos+1) = 'u' && String.unsafe_get s (pos+2) = 'b' && String.unsafe_get s (pos+3) = 'm' && String.unsafe_get s (pos+4) = 'i' && String.unsafe_get s (pos+5) = 't' && String.unsafe_get s (pos+6) = 't' && String.unsafe_get s (pos+7) = 'e' && String.unsafe_get s (pos+8) = 'd' then (
+                        3
+                      )
+                      else (
+                        -1
+                      )
+                    )
+                  | 't' -> (
+                      if String.unsafe_get s (pos+1) = 'i' && String.unsafe_get s (pos+2) = 'm' && String.unsafe_get s (pos+3) = 'e' && String.unsafe_get s (pos+4) = 's' && String.unsafe_get s (pos+5) = 't' && String.unsafe_get s (pos+6) = 'a' && String.unsafe_get s (pos+7) = 'm' && String.unsafe_get s (pos+8) = 'p' then (
+                        1
+                      )
+                      else (
+                        -1
+                      )
+                    )
+                  | _ -> (
+                      -1
+                    )
+              )
+            | _ -> (
+                -1
+              )
+      in
+      let i = Yojson.Safe.map_ident p f lb in
+      Ag_oj_run.read_until_field_value p lb;
+      (
+        match i with
+          | 0 ->
+            field_id := (
+              (
+                Ag_oj_run.read_int
+              ) p lb
+            );
+            bits0 := !bits0 lor 0x1;
+          | 1 ->
+            field_timestamp := (
+              (
+                Ag_oj_run.read_string
+              ) p lb
+            );
+            bits0 := !bits0 lor 0x2;
+          | 2 ->
+            field_outputs := (
+              (
+                read_output_l
+              ) p lb
+            );
+            bits0 := !bits0 lor 0x4;
+          | 3 ->
+            field_submitted := (
+              (
+                Ag_oj_run.read_bool
+              ) p lb
+            );
+            bits0 := !bits0 lor 0x8;
+          | 4 ->
+            field_score := (
+              (
+                Ag_oj_run.read_int
+              ) p lb
+            );
+            bits0 := !bits0 lor 0x10;
+          | _ -> (
+              Yojson.Safe.skip_json p lb
+            )
+      );
+      while true do
+        Yojson.Safe.read_space p lb;
+        Yojson.Safe.read_object_sep p lb;
+        Yojson.Safe.read_space p lb;
+        let f =
+          fun s pos len ->
+            if pos < 0 || len < 0 || pos + len > String.length s then
+              invalid_arg "out-of-bounds substring position or length";
+            match len with
+              | 2 -> (
+                  if String.unsafe_get s pos = 'i' && String.unsafe_get s (pos+1) = 'd' then (
+                    0
+                  )
+                  else (
+                    -1
+                  )
+                )
+              | 5 -> (
+                  if String.unsafe_get s pos = 's' && String.unsafe_get s (pos+1) = 'c' && String.unsafe_get s (pos+2) = 'o' && String.unsafe_get s (pos+3) = 'r' && String.unsafe_get s (pos+4) = 'e' then (
+                    4
+                  )
+                  else (
+                    -1
+                  )
+                )
+              | 7 -> (
+                  if String.unsafe_get s pos = 'o' && String.unsafe_get s (pos+1) = 'u' && String.unsafe_get s (pos+2) = 't' && String.unsafe_get s (pos+3) = 'p' && String.unsafe_get s (pos+4) = 'u' && String.unsafe_get s (pos+5) = 't' && String.unsafe_get s (pos+6) = 's' then (
+                    2
+                  )
+                  else (
+                    -1
+                  )
+                )
+              | 9 -> (
+                  match String.unsafe_get s pos with
+                    | 's' -> (
+                        if String.unsafe_get s (pos+1) = 'u' && String.unsafe_get s (pos+2) = 'b' && String.unsafe_get s (pos+3) = 'm' && String.unsafe_get s (pos+4) = 'i' && String.unsafe_get s (pos+5) = 't' && String.unsafe_get s (pos+6) = 't' && String.unsafe_get s (pos+7) = 'e' && String.unsafe_get s (pos+8) = 'd' then (
+                          3
+                        )
+                        else (
+                          -1
+                        )
+                      )
+                    | 't' -> (
+                        if String.unsafe_get s (pos+1) = 'i' && String.unsafe_get s (pos+2) = 'm' && String.unsafe_get s (pos+3) = 'e' && String.unsafe_get s (pos+4) = 's' && String.unsafe_get s (pos+5) = 't' && String.unsafe_get s (pos+6) = 'a' && String.unsafe_get s (pos+7) = 'm' && String.unsafe_get s (pos+8) = 'p' then (
+                          1
+                        )
+                        else (
+                          -1
+                        )
+                      )
+                    | _ -> (
+                        -1
+                      )
+                )
+              | _ -> (
+                  -1
+                )
+        in
+        let i = Yojson.Safe.map_ident p f lb in
+        Ag_oj_run.read_until_field_value p lb;
+        (
+          match i with
+            | 0 ->
+              field_id := (
+                (
+                  Ag_oj_run.read_int
+                ) p lb
+              );
+              bits0 := !bits0 lor 0x1;
+            | 1 ->
+              field_timestamp := (
+                (
+                  Ag_oj_run.read_string
+                ) p lb
+              );
+              bits0 := !bits0 lor 0x2;
+            | 2 ->
+              field_outputs := (
+                (
+                  read_output_l
+                ) p lb
+              );
+              bits0 := !bits0 lor 0x4;
+            | 3 ->
+              field_submitted := (
+                (
+                  Ag_oj_run.read_bool
+                ) p lb
+              );
+              bits0 := !bits0 lor 0x8;
+            | 4 ->
+              field_score := (
+                (
+                  Ag_oj_run.read_int
+                ) p lb
+              );
+              bits0 := !bits0 lor 0x10;
+            | _ -> (
+                Yojson.Safe.skip_json p lb
+              )
+        );
+      done;
+      assert false;
+    with Yojson.End_of_object -> (
+        if !bits0 <> 0x1f then Ag_oj_run.missing_fields p [| !bits0 |] [| "id"; "timestamp"; "outputs"; "submitted"; "score" |];
+        (
+          {
+            id = !field_id;
+            timestamp = !field_timestamp;
+            outputs = !field_outputs;
+            submitted = !field_submitted;
+            score = !field_score;
+          }
+         : event)
+      )
+)
+let event_of_string s =
+  read_event (Yojson.Safe.init_lexer ()) (Lexing.from_string s)
+let write__5 = (
+  Ag_oj_run.write_list (
+    write_event
+  )
+)
+let string_of__5 ?(len = 1024) x =
+  let ob = Bi_outbuf.create len in
+  write__5 ob x;
+  Bi_outbuf.contents ob
+let read__5 = (
+  Ag_oj_run.read_list (
+    read_event
+  )
+)
+let _5_of_string s =
+  read__5 (Yojson.Safe.init_lexer ()) (Lexing.from_string s)
+let write_scoreboard = (
+  write__5
+)
+let string_of_scoreboard ?(len = 1024) x =
+  let ob = Bi_outbuf.create len in
+  write_scoreboard ob x;
+  Bi_outbuf.contents ob
+let read_scoreboard = (
+  read__5
+)
+let scoreboard_of_string s =
+  read_scoreboard (Yojson.Safe.init_lexer ()) (Lexing.from_string s)
 let write__3 = (
   Ag_oj_run.write_list (
     Yojson.Safe.write_int

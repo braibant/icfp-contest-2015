@@ -31,10 +31,9 @@ let utc_tag () =
   date
 
 
-let log input outputs =
+let log ~filename input outputs =
   make_output_dir input.id;
-  let date = utc_tag () in
-  let channel = open_out @@ Printf.sprintf "outputs/%i/%s.json" input.id date in
+  let channel = open_out @@ Printf.sprintf "outputs/%i/%s.json" input.id filename in
   let output = Formats_j.string_of_output_l outputs in
   Printf.fprintf channel "%s\n%!" output;
   close_out channel
@@ -56,6 +55,19 @@ let publish ~token ~team_id data =
 let publish input outputs =
   publish Global.token Global.team_id (Formats_j.string_of_output_l outputs)
 
-let main ~submit input outputs =
-  log input outputs;
+let main ~submit ~score input outputs  =
+  let timestamp =  utc_tag () in
+
+  log timestamp input outputs;
+
   if submit then publish input outputs else ();
+
+  let scoreboard = Scoreboard.read () in
+  let event = Formats_t.{
+      id = input.id;
+      timestamp;
+      outputs;
+      submitted = submit;
+      score;
+    } in
+  Scoreboard.write (event::scoreboard)

@@ -11,6 +11,16 @@ type output = { problemId: int; seed: int; tag: string; solution: commands }
 
 type output_l = output list
 
+type event = {
+  id: int;
+  timestamp: string;
+  outputs: output_l;
+  submitted: bool;
+  score: int
+}
+
+type scoreboard = event list
+
 type input = {
   id: int;
   units: unit_t list;
