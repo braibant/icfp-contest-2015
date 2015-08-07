@@ -1,6 +1,9 @@
 open Formats_t
 
 let check input outputs =
+  (* [ *)
+  (*   "All source seeds appear in outputs" *)
+  (* ] *)
   List.for_all
     (fun seed -> List.exists (fun i -> i.seed = seed) outputs)
     input.sourceSeeds
@@ -17,8 +20,6 @@ let check input outputs =
       ) outputs;
     true
   with e -> print_endline @@ Printexc.to_string e; false
-
-  (* maybe check that there is no cycle ? *)
 
 let make_output_dir id =
   let path = Printf.sprintf "outputs/%i" id in
@@ -68,6 +69,10 @@ let publish input outputs =
   publish Global.token Global.team_id (Formats_j.string_of_output_l outputs)
 
 let main ~submit ~score input outputs  =
+  if check input outputs
+  then Printf.printf "Check OK!\n"
+  else Printf.printf "Check failed!\n";
+
   let timestamp =  utc_tag () in
 
   log timestamp input outputs;
