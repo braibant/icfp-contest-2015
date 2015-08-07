@@ -45,12 +45,12 @@ val cell_of_bit: config -> int -> Cell.t
 
 val action_of_char : char -> action
 
-type invalid_kind =
-| Overlap
-| Bottom
-| LeftRight
-| Up
-exception Invalid_conf of invalid_kind list
+(* type invalid_kind = *)
+(* | Overlap *)
+(* | Bottom *)
+(* | LeftRight *)
+(* | Up *)
+exception Invalid_conf (* of invalid_kind list *)
 exception End of int * action list
 
 (** {2 Internal functions, do not update the commands field}  *)
