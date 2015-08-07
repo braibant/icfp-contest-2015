@@ -19,7 +19,7 @@ let make_output problem seed solution tag =
   let open Formats_t in
   {
     problemId = problem.id;
-    seed = List.nth problem.sourceSeeds seed;
+    seed;
     tag;
     solution
   }
@@ -44,23 +44,25 @@ let interactive filename options tag =
   let score, commands = Simulator.interactive config in
   let solution = Oracle.empower commands in
   let output = make_output problem seed solution tag in
-  Submit.main ~submit:options.submit problem [output]
+  let submit = n = 1 && options.submit in
+  Submit.main ~score ~submit problem [output]
 
 let interactive ({filenames; number; memory; phrase_of_power} as options)  =
   let tag = String.concat " " ["int"; (Submit.utc_tag ()) ]in
-  List.iter (fun f -> ignore (interactive f options tag)) filenames
+  List.iter (fun f -> interactive f options tag) filenames
 
 (** AI  *)
 
 let ai filename options tag =
   let problem = open_in filename in
-  let solve seed =
-    Printf.printf "Problem %i, seed %i/%i -- length %i\n%!"
+  let solve seed_id seed =
+    Printf.printf "Problem %i, seed %i (%i/%i)-- length %i\n%!"
       problem.Formats_t.id
-      (seed + 1)
-      (List.length problem.Formats_t.sourceSeeds)
+      seed
+      seed_id
+      (List.length problem.Formats_t.sourceSeeds -1 )
       problem.Formats_t.sourceLength;
-    let state = ref (Rules.init problem seed) in
+    let state = ref (Rules.init problem seed_id) in
     let n = ref 0 in
     try
       while true do
@@ -73,14 +75,20 @@ let ai filename options tag =
     with Rules.End (score,commands) ->
       Printf.printf "Final score : %d\n" score;
       let solution = Oracle.empower commands in
-      make_output problem seed solution tag
+      let output = make_output problem seed solution tag in
+      output, score
   in
-  let outputs = List.map solve problem.Formats_t.sourceSeeds in
-  Submit.main ~submit:options.submit problem outputs
+  let outputs = List.mapi solve problem.Formats_t.sourceSeeds in
+
+  let score = List.fold_left (fun acc (_,score) -> acc + score) 0 outputs in
+  let score = score / (List.length problem.Formats_t.sourceSeeds) in
+  let outputs = List.map fst outputs in
+
+  Submit.main ~score ~submit:options.submit problem outputs
 
 let ai ({filenames; number; memory; phrase_of_power} as options) =
   let tag = String.concat " " ["main"; (Submit.utc_tag ()) ]in
-  List.iter (fun f -> ignore (ai f options tag)) filenames
+  List.iter (fun f -> ai f options tag) filenames
 
 (* Cmdliner code *)
 open Cmdliner
