@@ -82,6 +82,8 @@ let draw_score config =
   let w = Graphics.size_x () - score_x in
   let h = Graphics.size_y () / 2 in
   Graphics.moveto w h;
+  Graphics.fill_rect w h 100 100;
+  Graphics.moveto w h;
   Graphics.draw_string (Printf.sprintf "Score: %i" config.Rules.score)
 
 let init board =
