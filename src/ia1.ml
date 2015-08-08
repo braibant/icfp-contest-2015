@@ -121,17 +121,17 @@ let heuristic_score data config =
       config.full_cells;
     sc := !sc + heuristic_line data config;
     let delta = [(0, 1);(1, 0);(0, -1);(-1, 0);(1,-1);(-1,1)] in
-    Bitv.iteri_true (fun bit ->
-      let cell = cell_of_bit data bit in
-      let neigh = List.map (Cell.(+) cell) delta in
-      let neigh = List.filter (fun c -> check_cell data c = 0) neigh in
-      let neig_empty = List.filter (fun c ->
-        not (Bitv.get config.full_cells (bit_of_cell data c)))
-        neigh
-      in
-      if List.length neig_empty <= 1 then sc := !sc - 40;
-      if List.length neig_empty = 2 then sc := !sc - 10;
-    ) (Bitv.bw_not config.full_cells);
+    (* Bitv.iteri_true (fun bit -> *)
+    (*   let cell = cell_of_bit data bit in *)
+    (*   let neigh = List.map (Cell.(+) cell) delta in *)
+    (*   let neigh = List.filter (fun c -> check_cell data c = 0) neigh in *)
+    (*   let neig_empty = List.filter (fun c -> *)
+    (*     not (Bitv.get config.full_cells (bit_of_cell data c))) *)
+    (*     neigh *)
+    (*   in *)
+    (*   if List.length neig_empty <= 1 then sc := !sc - 40; *)
+    (*   if List.length neig_empty = 2 then sc := !sc - 10; *)
+    (* ) (Bitv.bw_not config.full_cells); *)
     !sc
 
 

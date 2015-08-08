@@ -59,9 +59,9 @@ type data =
     input: Formats_t.input;
     width : int;
     height : int;
-    units: Formats_t.unit_t array;
     coord_of_bit : (int * int) array;
     cell_of_bit : (int * int) array;
+    units: (Bitv.t * (int * int)) array;
   }
 
 module Data = struct
@@ -72,6 +72,30 @@ module Data = struct
 
   let cell_of_bit width bit =
     Cell.of_coord (coord_of_bit width bit)
+
+  let bit_of_coord width (x,y) = x+y*width
+
+  let center_unit width height unit =
+    let shift_y =
+      let dy = -List.fold_left (fun acc c -> min acc c.y) (1000000) unit.members in
+      fun {x; y} -> Cell.(to_coord (of_coord (x, y) + (dy asr 1, (succ dy) asr 1)))
+    in
+    let members = List.map shift_y unit.members
+    and pivot = shift_y unit.pivot in
+    let min_x = List.fold_left (fun acc c -> min acc (fst c)) (1000000) members in
+    let max_x = List.fold_left (fun acc c -> max acc (fst c)) (-1000000) members in
+    let shift_x =
+      let dx = (width-max_x-min_x-1) asr 1 in
+      fun (x, y) -> (x+dx, y)
+    in
+    let members = List.map shift_x members
+    and pivot = shift_x pivot in
+    let members =
+      Bitv.of_list_with_length
+        (List.map (fun xy -> bit_of_coord width xy) members)
+        (width*height)
+    and pivot = Cell.of_coord pivot in
+    (members, pivot)
 end
 
 let build_data input =
@@ -80,21 +104,21 @@ let build_data input =
   {input;
    height;
    width;
-   units = Array.of_list input.units;
    coord_of_bit = Array.init (width * height) (Data.coord_of_bit width);
    cell_of_bit = Array.init (width * height) (Data.cell_of_bit width);
+   units = Array.map (Data.center_unit width height) (Array.of_list input.units)
   }
 
 (** Memoized data  *)
 let width data = data.width
 let height data = data.height
 let coord_of_bit data bit = data.coord_of_bit.(bit)
-let cell_of_bit data bit = data.cell_of_bit.(bit)
 let bit_of_coord data (x,y) = x+y*data.width
+let cell_of_bit data bit = data.cell_of_bit.(bit)
 let bit_of_cell data cell = bit_of_coord data (Cell.to_coord cell)
 let create_bitv data = Bitv.create (data.width*data.height) false
 let number_of_units data = Array.length data.units
-let nth_unit data id = data.units.(id)
+let get_unit data id = data.units.(id)
 
 module HashableConfig =
 struct
@@ -172,27 +196,9 @@ let rotate data dir conf =
 let spawn_unit data conf act =
   let rng = Int32.(to_int (logand (shift_right_logical conf.rng_state 16) 0x7FFFl)) in
   let unit_id = rng mod (number_of_units data) in
-  let unit = nth_unit data unit_id in
-  let shift_y =
-    let dy = -List.fold_left (fun acc c -> min acc c.y) (1000000) unit.members in
-    fun {x; y} -> Cell.(to_coord (of_coord (x, y) + (dy asr 1, (succ dy) asr 1)))
-  in
-  let unit = List.map shift_y unit.members
-  and unit_pivot = shift_y unit.pivot in
-  let min_x = List.fold_left (fun acc c -> min acc (fst c)) (1000000) unit in
-  let max_x = List.fold_left (fun acc c -> max acc (fst c)) (-1000000) unit in
-  let shift_x =
-    let dx = (width data-max_x-min_x-1) asr 1 in
-    fun (x, y) -> (x+dx, y)
-  in
-  let unit = List.map shift_x unit in
-  let unit_pivot = shift_x unit_pivot in
+  let unit_cells, unit_pivot = get_unit data unit_id in
   let conf = { conf with
-    unit_cells =
-      Bitv.of_list_with_length
-        (List.map (fun xy -> bit_of_coord data xy) unit)
-        (width data*height data);
-    unit_pivot = Cell.of_coord unit_pivot;
+    unit_cells; unit_pivot;
     rng_state = Int32.(add (mul 1103515245l conf.rng_state) 12345l);
     unit_no = conf.unit_no + 1;
     commands =
