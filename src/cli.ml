@@ -154,10 +154,10 @@ let nuke_info =
   Term.info "nuke" ~doc
 
 (* Show score *)
-let nuke_t =
+let show_t =
   Term.(pure score $ pure ())
 
-let nuke_info =
+let show_info =
   let doc = "Our score" in
   Term.info "score" ~doc
 
@@ -165,7 +165,8 @@ let commands =
   [
     interactive_t, interactive_info;
     ai_t, ai_info;
-    nuke_t, nuke_info
+    nuke_t, nuke_info;
+    show_t, show_info
   ]
 
 let default = interactive_t, interactive_info
