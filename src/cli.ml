@@ -185,6 +185,8 @@ let commands =
     show_t, show_info
   ]
 
-let default = interactive_t, interactive_info
+(* let default = interactive_t, interactive_info *)
+let default =     ai_t, ai_info
+
 
 let () = match Term.eval_choice default  commands with `Error _ -> exit 1 | _ -> exit 0
