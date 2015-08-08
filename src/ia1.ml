@@ -62,35 +62,49 @@ let heuristic_score conf =
       conf.full_cells;
     !sc
 
-let best_heuristic_score_mem =
-  Rules.HashConfig.create 17
+exception TooMuchColl
+let best_heuristic_score_hsize = 10007
+let best_heuristic_score_mem = Array.make best_heuristic_score_hsize None
+let n_coll = ref 0
 let rec best_heuristic_score conf = function
   | 0 -> heuristic_score conf
   | depth ->
     match conf with
     | End _ -> heuristic_score conf
     | Cont conf ->
-      try
-        Rules.HashConfig.find best_heuristic_score_mem conf
-      with Not_found ->
+      let h = Rules.HashableConfig.hash conf mod best_heuristic_score_hsize in
+      match best_heuristic_score_mem.(h) with
+      | Some (conf', sc) when Rules.HashableConfig.equal conf conf' -> sc
+      | bucket ->
+        if bucket <> None then
+          begin
+            incr n_coll;
+            if !n_coll > 100 then raise TooMuchColl
+          end;
         let next = find_reachable_states conf in
         let res =
           List.fold_left (fun acc (conf, _) ->
             let score = best_heuristic_score conf (depth-1) in
             max acc score) min_int next
         in
-        Rules.HashConfig.replace best_heuristic_score_mem conf res;
+        best_heuristic_score_mem.(h) <- Some (conf, res);
         res
 
 let rec play conf =
-  let next = find_reachable_states conf in
-  let (_, path) =
-    List.fold_left (fun ((scoremax, pathmax) as acc) (conf,path) ->
-      let score = best_heuristic_score conf 0 in
-      if score <= scoremax then acc
-      else (score, path)
-    ) (min_int, []) next
-  in
-  HashConfig.clear best_heuristic_score_mem;
   HashConfig.clear find_reachable_states_mem;
-  List.fold_left play_action conf path
+  let next = find_reachable_states conf in
+  let conf_end = ref conf in
+  begin try
+    for depth = 0 to 10 do
+      Array.fill best_heuristic_score_mem 0 best_heuristic_score_hsize None;
+      let (_, path) =
+        List.fold_left (fun ((scoremax, pathmax) as acc) (conf,path) ->
+          let score = best_heuristic_score conf depth in
+          if score <= scoremax then acc
+          else (score, path)
+        ) (min_int, []) next
+      in
+      conf_end := List.fold_left play_action conf path
+    done
+  with TooMuchColl -> () end;
+  !conf_end
