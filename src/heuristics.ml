@@ -50,7 +50,7 @@ let signals =
   |]
 
 let simple data config =
-  heuristic_base data config + score data config
+  heuristic_base data config + score data config + heuristic_line data config
 
 let meta weights data config : int =
   let acc = ref 0. in

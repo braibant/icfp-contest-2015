@@ -1,5 +1,5 @@
 let version = "0.4-jh"
-let max_depth = ref 1
+let max_depth = ref 5
 
 
 open Rules
@@ -65,43 +65,95 @@ let find_reachable_states data init =
     next
 
 
-let heuristic_score heuristic data config =
+let heuristic_score data config =
   match config with
   | End sc -> (sc-10000)*10000
   | Cont config ->
-    heuristic data config
+    Heuristics.simple data config
 
 
 let best_heuristic_score_mem =
   Rules.HashConfig.create 17
 
-let rec best_heuristic_score weights data conf = function
-  | 0 -> heuristic_score weights data conf
+let rec best_heuristic_score data conf = function
+  | 0 -> heuristic_score data conf
   | depth ->
     match conf with
-    | End _ -> heuristic_score weights data conf
+    | End _ -> heuristic_score data conf
     | Cont conf ->
       try
         Rules.HashConfig.find best_heuristic_score_mem conf
       with Not_found ->
         let next = find_reachable_states data conf in
+        Printf.printf "At depth %i, %i possible choices\n%!" (!max_depth - depth) (List.length next);
         let res =
           List.fold_left (fun acc (conf, _) ->
-              let score = best_heuristic_score weights data conf (depth-1) in
+              let score = best_heuristic_score data conf (depth-1) in
               max acc score) min_int next
         in
         Rules.HashConfig.replace best_heuristic_score_mem conf res;
         res
 
-let rec play heuristic data conf =
+
+(* compute the best outcome in the given set *)
+let pick_best data next =
+  List.fold_left (fun ((scoremax, pathmax) as acc) (conf,path) ->
+      let score = heuristic_score data conf in
+      if score <= scoremax then acc
+      else (score, path))
+    (min_int, []) next
+
+
+let rec breadth data next = function
+  | 0 -> pick_best data next
+  | depth ->
+    let module T =
+    struct
+      type t = full_conf * Rules.action list
+      let compare (a,_) (b,_) =
+        Pervasives.compare
+          (heuristic_score  data a)
+          (heuristic_score  data b)
+    end
+    in
+    let module Q = Binary_heap.Make(T) in
+    let q = Q.create 100 in
+    List.iter (fun (conf,path) ->
+        match conf with
+        | End _ -> Q.add q (conf, path)
+        | Cont conf ->
+          let next = find_reachable_states data conf in
+          List.iter (fun (conf', _) -> Q.add q (conf', path)) next
+      ) next;
+    Printf.printf "Size %i\n%!" (Q.size q);
+    let next =
+      let l = ref [] in
+      try
+        for i = 0 to 100 do
+          l := Q.pop_maximum q :: !l
+        done;
+        !l
+      with Binary_heap.Empty -> !l
+    in breadth data next (depth -1)
+
+
+
+let rec play data conf =
   let next = find_reachable_states data conf in
   let (_, path) =
     List.fold_left (fun ((scoremax, pathmax) as acc) (conf,path) ->
-      let score = best_heuristic_score heuristic data conf !max_depth in
+      let score = best_heuristic_score data conf !max_depth in
       if score <= scoremax then acc
       else (score, path)
     ) (min_int, []) next
   in
+  HashConfig.clear best_heuristic_score_mem;
+  HashConfig.clear find_reachable_states_mem;
+  List.fold_left (play_action data) conf path
+
+let rec play data conf =
+  let next = find_reachable_states data conf in
+  let (_,path) = breadth data next !max_depth in
   HashConfig.clear best_heuristic_score_mem;
   HashConfig.clear find_reachable_states_mem;
   List.fold_left (play_action data) conf path

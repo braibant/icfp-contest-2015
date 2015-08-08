@@ -71,7 +71,7 @@ let ai_f filename options weights tag =
         incr n;
         if !n mod 10 = 0
         then Printf.printf "Turn %i/%i\n%!" !n       problem.Formats_t.sourceLength;
-        state := Ia1.play Heuristics.simple data !state
+        state := Ia1.play  data !state
       done;
       assert false
     with Rules.End (score,commands) ->
