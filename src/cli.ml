@@ -96,6 +96,9 @@ let nuke options =
   let filenames = List.map (fun s -> "problems/" ^ s) filenames in
   List.iter (fun file -> ai_f file options tag) filenames
 
+let score () =
+  Printf.printf "Score board\n%s\n" @@ Scoreboard.display (Scoreboard.read ())
+
 (* Cmdliner code *)
 open Cmdliner
 
@@ -149,6 +152,14 @@ let nuke_t =
 let nuke_info =
   let doc = "Our mighty automated solver (nuke all problems)" in
   Term.info "nuke" ~doc
+
+(* Show score *)
+let nuke_t =
+  Term.(pure score $ pure ())
+
+let nuke_info =
+  let doc = "Our score" in
+  Term.info "score" ~doc
 
 let commands =
   [

@@ -17,7 +17,6 @@ type output = Formats_t.output = {
 type output_l = Formats_t.output_l
 
 type event = Formats_t.event = {
-  id: int;
   timestamp: string;
   outputs: output_l;
   submitted: bool;

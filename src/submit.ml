@@ -79,7 +79,7 @@ let publish input outputs =
   publish Global.token Global.team_id (Formats_j.string_of_output_l outputs)
 
 let best_score scoreboard problem =
-  List.fold_left (fun acc {id;score;submitted} ->
+  List.fold_left (fun acc (id,{score;submitted}) ->
       if problem.id = id  && submitted
       then max score acc
       else acc
@@ -104,13 +104,12 @@ let main ~submit ~score input outputs  =
 
   let scoreboard = Scoreboard.read () in
   let event = Formats_t.{
-      id = input.id;
       timestamp;
       outputs;
       submitted = submit;
       score;
     } in
-  Scoreboard.write (event::scoreboard);
+  Scoreboard.write ((input.id,event)::scoreboard);
 
   let old = best_score scoreboard input in
   if old < event.score

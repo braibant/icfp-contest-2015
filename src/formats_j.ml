@@ -17,7 +17,6 @@ type output = Formats_t.output = {
 type output_l = Formats_t.output_l
 
 type event = Formats_t.event = {
-  id: int;
   timestamp: string;
   outputs: output_l;
   submitted: bool;
@@ -625,15 +624,6 @@ let write_event : _ -> event -> _ = (
       is_first := false
     else
       Bi_outbuf.add_char ob ',';
-    Bi_outbuf.add_string ob "\"id\":";
-    (
-      Yojson.Safe.write_int
-    )
-      ob x.id;
-    if !is_first then
-      is_first := false
-    else
-      Bi_outbuf.add_char ob ',';
     Bi_outbuf.add_string ob "\"timestamp\":";
     (
       Yojson.Safe.write_string
@@ -676,7 +666,6 @@ let read_event = (
   fun p lb ->
     Yojson.Safe.read_space p lb;
     Yojson.Safe.read_lcurl p lb;
-    let field_id = ref (Obj.magic 0.0) in
     let field_timestamp = ref (Obj.magic 0.0) in
     let field_outputs = ref (Obj.magic 0.0) in
     let field_submitted = ref (Obj.magic 0.0) in
@@ -691,17 +680,9 @@ let read_event = (
           if pos < 0 || len < 0 || pos + len > String.length s then
             invalid_arg "out-of-bounds substring position or length";
           match len with
-            | 2 -> (
-                if String.unsafe_get s pos = 'i' && String.unsafe_get s (pos+1) = 'd' then (
-                  0
-                )
-                else (
-                  -1
-                )
-              )
             | 5 -> (
                 if String.unsafe_get s pos = 's' && String.unsafe_get s (pos+1) = 'c' && String.unsafe_get s (pos+2) = 'o' && String.unsafe_get s (pos+3) = 'r' && String.unsafe_get s (pos+4) = 'e' then (
-                  4
+                  3
                 )
                 else (
                   -1
@@ -709,7 +690,7 @@ let read_event = (
               )
             | 7 -> (
                 if String.unsafe_get s pos = 'o' && String.unsafe_get s (pos+1) = 'u' && String.unsafe_get s (pos+2) = 't' && String.unsafe_get s (pos+3) = 'p' && String.unsafe_get s (pos+4) = 'u' && String.unsafe_get s (pos+5) = 't' && String.unsafe_get s (pos+6) = 's' then (
-                  2
+                  1
                 )
                 else (
                   -1
@@ -719,7 +700,7 @@ let read_event = (
                 match String.unsafe_get s pos with
                   | 's' -> (
                       if String.unsafe_get s (pos+1) = 'u' && String.unsafe_get s (pos+2) = 'b' && String.unsafe_get s (pos+3) = 'm' && String.unsafe_get s (pos+4) = 'i' && String.unsafe_get s (pos+5) = 't' && String.unsafe_get s (pos+6) = 't' && String.unsafe_get s (pos+7) = 'e' && String.unsafe_get s (pos+8) = 'd' then (
-                        3
+                        2
                       )
                       else (
                         -1
@@ -727,7 +708,7 @@ let read_event = (
                     )
                   | 't' -> (
                       if String.unsafe_get s (pos+1) = 'i' && String.unsafe_get s (pos+2) = 'm' && String.unsafe_get s (pos+3) = 'e' && String.unsafe_get s (pos+4) = 's' && String.unsafe_get s (pos+5) = 't' && String.unsafe_get s (pos+6) = 'a' && String.unsafe_get s (pos+7) = 'm' && String.unsafe_get s (pos+8) = 'p' then (
-                        1
+                        0
                       )
                       else (
                         -1
@@ -746,40 +727,33 @@ let read_event = (
       (
         match i with
           | 0 ->
-            field_id := (
-              (
-                Ag_oj_run.read_int
-              ) p lb
-            );
-            bits0 := !bits0 lor 0x1;
-          | 1 ->
             field_timestamp := (
               (
                 Ag_oj_run.read_string
               ) p lb
             );
-            bits0 := !bits0 lor 0x2;
-          | 2 ->
+            bits0 := !bits0 lor 0x1;
+          | 1 ->
             field_outputs := (
               (
                 read_output_l
               ) p lb
             );
-            bits0 := !bits0 lor 0x4;
-          | 3 ->
+            bits0 := !bits0 lor 0x2;
+          | 2 ->
             field_submitted := (
               (
                 Ag_oj_run.read_bool
               ) p lb
             );
-            bits0 := !bits0 lor 0x8;
-          | 4 ->
+            bits0 := !bits0 lor 0x4;
+          | 3 ->
             field_score := (
               (
                 Ag_oj_run.read_int
               ) p lb
             );
-            bits0 := !bits0 lor 0x10;
+            bits0 := !bits0 lor 0x8;
           | _ -> (
               Yojson.Safe.skip_json p lb
             )
@@ -793,17 +767,9 @@ let read_event = (
             if pos < 0 || len < 0 || pos + len > String.length s then
               invalid_arg "out-of-bounds substring position or length";
             match len with
-              | 2 -> (
-                  if String.unsafe_get s pos = 'i' && String.unsafe_get s (pos+1) = 'd' then (
-                    0
-                  )
-                  else (
-                    -1
-                  )
-                )
               | 5 -> (
                   if String.unsafe_get s pos = 's' && String.unsafe_get s (pos+1) = 'c' && String.unsafe_get s (pos+2) = 'o' && String.unsafe_get s (pos+3) = 'r' && String.unsafe_get s (pos+4) = 'e' then (
-                    4
+                    3
                   )
                   else (
                     -1
@@ -811,7 +777,7 @@ let read_event = (
                 )
               | 7 -> (
                   if String.unsafe_get s pos = 'o' && String.unsafe_get s (pos+1) = 'u' && String.unsafe_get s (pos+2) = 't' && String.unsafe_get s (pos+3) = 'p' && String.unsafe_get s (pos+4) = 'u' && String.unsafe_get s (pos+5) = 't' && String.unsafe_get s (pos+6) = 's' then (
-                    2
+                    1
                   )
                   else (
                     -1
@@ -821,7 +787,7 @@ let read_event = (
                   match String.unsafe_get s pos with
                     | 's' -> (
                         if String.unsafe_get s (pos+1) = 'u' && String.unsafe_get s (pos+2) = 'b' && String.unsafe_get s (pos+3) = 'm' && String.unsafe_get s (pos+4) = 'i' && String.unsafe_get s (pos+5) = 't' && String.unsafe_get s (pos+6) = 't' && String.unsafe_get s (pos+7) = 'e' && String.unsafe_get s (pos+8) = 'd' then (
-                          3
+                          2
                         )
                         else (
                           -1
@@ -829,7 +795,7 @@ let read_event = (
                       )
                     | 't' -> (
                         if String.unsafe_get s (pos+1) = 'i' && String.unsafe_get s (pos+2) = 'm' && String.unsafe_get s (pos+3) = 'e' && String.unsafe_get s (pos+4) = 's' && String.unsafe_get s (pos+5) = 't' && String.unsafe_get s (pos+6) = 'a' && String.unsafe_get s (pos+7) = 'm' && String.unsafe_get s (pos+8) = 'p' then (
-                          1
+                          0
                         )
                         else (
                           -1
@@ -848,40 +814,33 @@ let read_event = (
         (
           match i with
             | 0 ->
-              field_id := (
-                (
-                  Ag_oj_run.read_int
-                ) p lb
-              );
-              bits0 := !bits0 lor 0x1;
-            | 1 ->
               field_timestamp := (
                 (
                   Ag_oj_run.read_string
                 ) p lb
               );
-              bits0 := !bits0 lor 0x2;
-            | 2 ->
+              bits0 := !bits0 lor 0x1;
+            | 1 ->
               field_outputs := (
                 (
                   read_output_l
                 ) p lb
               );
-              bits0 := !bits0 lor 0x4;
-            | 3 ->
+              bits0 := !bits0 lor 0x2;
+            | 2 ->
               field_submitted := (
                 (
                   Ag_oj_run.read_bool
                 ) p lb
               );
-              bits0 := !bits0 lor 0x8;
-            | 4 ->
+              bits0 := !bits0 lor 0x4;
+            | 3 ->
               field_score := (
                 (
                   Ag_oj_run.read_int
                 ) p lb
               );
-              bits0 := !bits0 lor 0x10;
+              bits0 := !bits0 lor 0x8;
             | _ -> (
                 Yojson.Safe.skip_json p lb
               )
@@ -889,10 +848,9 @@ let read_event = (
       done;
       assert false;
     with Yojson.End_of_object -> (
-        if !bits0 <> 0x1f then Ag_oj_run.missing_fields p [| !bits0 |] [| "id"; "timestamp"; "outputs"; "submitted"; "score" |];
+        if !bits0 <> 0xf then Ag_oj_run.missing_fields p [| !bits0 |] [| "timestamp"; "outputs"; "submitted"; "score" |];
         (
           {
-            id = !field_id;
             timestamp = !field_timestamp;
             outputs = !field_outputs;
             submitted = !field_submitted;
@@ -905,7 +863,20 @@ let event_of_string s =
   read_event (Yojson.Safe.init_lexer ()) (Lexing.from_string s)
 let write__5 = (
   Ag_oj_run.write_list (
-    write_event
+    fun ob x ->
+      Bi_outbuf.add_char ob '[';
+      (let x, _ = x in
+      (
+        Yojson.Safe.write_int
+      ) ob x
+      );
+      Bi_outbuf.add_char ob ',';
+      (let _, x = x in
+      (
+        write_event
+      ) ob x
+      );
+      Bi_outbuf.add_char ob ']';
   )
 )
 let string_of__5 ?(len = 1024) x =
@@ -914,7 +885,48 @@ let string_of__5 ?(len = 1024) x =
   Bi_outbuf.contents ob
 let read__5 = (
   Ag_oj_run.read_list (
-    read_event
+    fun p lb ->
+      Yojson.Safe.read_space p lb;
+      let std_tuple = Yojson.Safe.start_any_tuple p lb in
+      let len = ref 0 in
+      let end_of_tuple = ref false in
+      (try
+        let x0 =
+          let x =
+            (
+              Ag_oj_run.read_int
+            ) p lb
+          in
+          incr len;
+          Yojson.Safe.read_space p lb;
+          Yojson.Safe.read_tuple_sep2 p std_tuple lb;
+          x
+        in
+        let x1 =
+          let x =
+            (
+              read_event
+            ) p lb
+          in
+          incr len;
+          (try
+            Yojson.Safe.read_space p lb;
+            Yojson.Safe.read_tuple_sep2 p std_tuple lb;
+          with Yojson.End_of_tuple -> end_of_tuple := true);
+          x
+        in
+        if not !end_of_tuple then (
+          try
+            while true do
+              Yojson.Safe.skip_json p lb;
+              Yojson.Safe.read_space p lb;
+              Yojson.Safe.read_tuple_sep2 p std_tuple lb;
+            done
+          with Yojson.End_of_tuple -> ()
+        );
+        (x0, x1)
+      with Yojson.End_of_tuple ->
+        Ag_oj_run.missing_tuple_fields p !len [ 0; 1 ]);
   )
 )
 let _5_of_string s =
