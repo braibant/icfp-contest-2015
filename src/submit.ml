@@ -25,14 +25,20 @@ let check input outputs =
       ) outputs end;
   ]
 
-let make_output_dir id =
-  let path = Printf.sprintf "outputs/%i" id in
+let mkdir path =
   match Sys.is_directory path with
     true -> ()
-  | false -> invalid_arg @@ Printf.sprintf "%s: %s is not a directory"
-      __MODULE__
-      path
+  | false -> invalid_arg
+             @@ Printf.sprintf "%s: %s is not a directory"
+                               __MODULE__
+                               path
   | exception _ -> Unix.mkdir path 0o755
+
+(* Ensure that the outputs directory exists, and the problem directory
+exists. *)
+let make_output_dir id =
+  mkdir "outputs";
+  mkdir (Printf.sprintf "outputs/%i" id)
 
 let utc_tag () =
   let open Unix in
@@ -73,11 +79,11 @@ let publish input outputs =
   publish Global.token Global.team_id (Formats_j.string_of_output_l outputs)
 
 let best_score scoreboard problem =
-  List.fold_left (fun acc {id;score} ->
-      if problem.id = id
+  List.fold_left (fun acc {id;score;submitted} ->
+      if problem.id = id  && submitted
       then max score acc
       else acc
-    ) min_int scoreboard
+    ) 0 scoreboard
 
 let main ~submit ~score input outputs  =
   let checks = check input outputs in
@@ -106,5 +112,20 @@ let main ~submit ~score input outputs  =
     } in
   Scoreboard.write (event::scoreboard);
 
-  if submit && best_score scoreboard input < event.score
-  then publish input outputs else ();
+  let old = best_score scoreboard input in
+  if old < event.score
+  then
+    begin
+      Printf.printf "New best score! New score: %i (old score was %i)\n%!" event.score old;
+      if submit then
+        begin
+          Printf.printf "Submitting...\n%!";
+          publish input outputs;
+        end
+      else
+        Printf.printf "Please submit...\n%!"
+    end
+  else
+  if submit
+  then Printf.printf "Discarding submission (New score: %i, old score %i)\n%!" event.score old
+  else ()
