@@ -8,4 +8,3 @@ true: package(curl)
 true: use_graphics
 true: debug
 true: annot
-true: package(bitv)
