@@ -1,5 +1,6 @@
-(* solver's code *)
+let () = Sys.catch_break true
 
+(* solver's code *)
 type options =
   {filenames : string list;
    number: int option;
@@ -88,13 +89,28 @@ let ai_f filename options tag =
 
 let ai ({filenames; number; memory; phrase_of_power} as options) =
   let tag = String.concat " " ["main"; (Submit.utc_tag ()) ]in
-  List.iter (fun file -> ai_f file options tag) filenames
+  let rec main file =
+    try ai_f file options tag
+    with Sys.Break ->
+      if !Ia1.max_depth > 0
+      then (decr Ia1.max_depth; main file)
+      else (Printf.printf "Cannot decrease max_depth, skipping...\n%!")
+  in
+  List.iter main filenames
 
 let nuke options =
   let tag = Submit.utc_tag () in
   let filenames = Sys.readdir "problems" |> Array.to_list |> List.sort Pervasives.compare in
   let filenames = List.map (fun s -> "problems/" ^ s) filenames in
-  List.iter (fun file -> ai_f file options tag) filenames
+  let default_max_depth = !Ia1.max_depth in
+  let rec main file =
+    try ai_f file options tag
+    with Sys.Break ->
+      if !Ia1.max_depth > 0
+      then (decr Ia1.max_depth; main file)
+      else (Printf.printf "Cannot decrease max_depth, skipping...\n%!")
+  in
+  List.iter (fun file -> Ia1.max_depth := default_max_depth; main file) filenames
 
 let score () =
   Printf.printf "Score board\n%s\n" @@ Scoreboard.display (Scoreboard.read ())

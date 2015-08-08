@@ -1,4 +1,5 @@
-let version = "0.1"
+let version = "0.3"
+let max_depth = ref 1
 
 open Rules
 
@@ -61,6 +62,53 @@ let find_reachable_states init =
     Rules.HashConfig.replace find_reachable_states_mem init next;
     next
 
+
+(* (\* For each conf, store an array of bitvectors, with one bitvector for *)
+(*    each line. All the bits of the cells in the line are true.*\) *)
+(* let lines : (int * int, _) Hashtbl.t = Hashtbl.create 17 *)
+
+(* let lines_for_conf conf = *)
+(*   let height = (Rules.height conf) in *)
+(*   let width = (Rules.width conf) in *)
+(*   let key = (height, width) in *)
+(*   try Hashtbl.find lines key *)
+(*   with _ -> *)
+(*     let l = *)
+(*       Array.init height *)
+(*         (fun i -> *)
+(*            let b = Rules.create_bitv conf in *)
+(*            for j = 0 to width - 1 do *)
+(*              Bitv.set b (Rules.bit_of_coord conf (j,i)) true *)
+(*            done; *)
+(*            b *)
+(*         )  in *)
+(*     Hashtbl.add lines key l; *)
+(*     l *)
+
+(* let popcount bitv = *)
+(*   let r = ref 0 in *)
+(*   Bitv.iteri_true (fun _ -> incr r) bitv; *)
+(*   !r *)
+
+(* let heuristic_line conf = *)
+(*   let lines = lines_for_conf conf in *)
+(*   let score = ref 0 in *)
+(*   Array.iter (fun line -> *)
+(*       let elements = popcount (Bitv.bw_and line conf.full_cells) in *)
+(*       (\* we want to max elements *\) *)
+(*       score := !score + elements * elements *)
+(*     ) lines; *)
+(*   !score *)
+
+let heuristic_line conf =
+  let height = Rules.height conf in
+  let table = Array.make height 0 in
+  Bitv.iteri_true (fun bit ->
+      let line = snd @@ Rules.coord_of_bit conf bit in
+      table.(line) <- table.(line) + 1
+    ) conf.full_cells;
+  Array.fold_left (fun acc elements -> acc + elements * elements) 0 table
+
 let heuristic_score conf =
   match conf with
   | End sc -> (sc-10000)*10000
@@ -70,7 +118,7 @@ let heuristic_score conf =
       let h = Rules.height conf - snd (Rules.coord_of_bit conf bit) in
       sc := !sc - h*h)
       conf.full_cells;
-    !sc
+    !sc + heuristic_line conf
 
 let best_heuristic_score_mem =
   Rules.HashConfig.create 17
@@ -96,7 +144,7 @@ let rec play conf =
   let next = find_reachable_states conf in
   let (_, path) =
     List.fold_left (fun ((scoremax, pathmax) as acc) (conf,path) ->
-      let score = best_heuristic_score conf 0 in
+      let score = best_heuristic_score conf !max_depth in
       if score <= scoremax then acc
       else (score, path)
     ) (min_int, []) next

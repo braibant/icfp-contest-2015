@@ -41,6 +41,7 @@ val bit_of_coord: config -> int*int -> int
 val bit_of_cell: config -> Cell.t -> int
 val coord_of_bit: config -> int -> int*int
 val cell_of_bit: config -> int -> Cell.t
+val create_bitv: config -> Bitv.t
 
 val action_of_char : char -> action option
 
