@@ -44,14 +44,14 @@ let find_reachable_states data init =
           insert_action (Turn CW);
           insert_action (Turn CCW);
           begin match !lock_action with
-          | None -> ()
-          | Some act ->
-            try
-              Rules.HashConfig.replace next (play_action data conf act)
-                (List.rev (act::path))
-            with Rules.End (score, _path) ->
-              if score > fst !best_ends then
-                best_ends := (score, List.rev (act::path))
+            | None -> ()
+            | Some act ->
+              try
+                Rules.HashConfig.replace next (play_action data conf act)
+                  (List.rev (act::path))
+              with Rules.End (score, _path) ->
+                if score > fst !best_ends then
+                  best_ends := (score, List.rev (act::path))
           end
         end
     done;
