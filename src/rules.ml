@@ -113,7 +113,10 @@ let move dir conf =
       Bitv.set unit_cells (bit_of_cell conf newcell) true)
     conf.unit_cells;
   let conf =
-    { conf with unit_cells; unit_pivot = Cell.(delta + conf.unit_pivot) }
+    { conf with
+      unit_cells;
+      unit_pivot = Cell.(delta + conf.unit_pivot);
+      commands = Move dir::conf.commands }
   in
   if unit_overlap conf then ik := !ik lor invalid_overlap;
   if !ik = valid then conf
@@ -129,12 +132,15 @@ let rotate dir conf =
     if ik' = valid then
       Bitv.set unit_cells (bit_of_cell conf newcell) true)
     conf.unit_cells;
-  let conf = { conf with unit_cells } in
+  let conf = { conf with
+    unit_cells;
+    commands = Turn dir::conf.commands }
+  in
   if unit_overlap conf then ik := !ik lor invalid_overlap;
   if !ik = valid then conf
   else raise (Invalid_conf !ik)
 
-let spawn_unit conf =
+let spawn_unit conf act =
   let rng = Int32.(to_int (logand (shift_right_logical conf.rng_state 16) 0xEFFFl)) in
   let unit_id = rng mod (List.length conf.problem.units) in
   let unit = List.nth conf.problem.units unit_id in
@@ -153,7 +159,8 @@ let spawn_unit conf =
         (width conf*height conf);
     unit_pivot = Cell.of_coord (unit.pivot.x, unit.pivot.y);
     rng_state = Int32.(add (mul 1103515245l conf.rng_state) 12345l);
-    unit_no = conf.unit_no + 1 }
+    unit_no = conf.unit_no + 1;
+    commands = act::conf.commands }
   in
   if conf.unit_no = conf.problem.sourceLength then
     raise (End (conf.score, List.rev conf.commands))
@@ -162,7 +169,7 @@ let spawn_unit conf =
     then raise (End (conf.score, List.rev conf.commands))
     else conf
 
-let lock conf =
+let lock conf act =
   let size = ref 0 in
   Bitv.iteri_true (fun _ -> incr size) conf.unit_cells;
   let size = !size in
@@ -196,7 +203,7 @@ let lock conf =
       ls_old = ls;
       score = conf.score + points + lines_bonus
   } in
-  spawn_unit conf
+  spawn_unit conf act
 
 let init pb ~seed_id =
   let conf =
@@ -216,7 +223,7 @@ let init pb ~seed_id =
         (List.map (fun {x;y} -> bit_of_coord conf (x,y)) pb.filled)
         (width conf*height conf) }
   in
-  spawn_unit conf
+  spawn_unit conf Nop
 
 let action_of_char = function
   | 'p' | '\''| '!' | '.' | '0' | '3' -> Move W
@@ -228,26 +235,19 @@ let action_of_char = function
   | '\t'| '\n'| '\r' -> Nop
   | _ -> assert false
 
-(* play an action, without adding the corresponding command *)
-let play_action conf = function
+let play_action conf act =
+  match act with
   | Move dir ->
     begin
       try move dir conf
-      with Invalid_conf _ -> lock conf
+      with Invalid_conf _ -> lock conf act
     end
   | Turn dir ->
     begin
       try rotate dir conf
-      with Invalid_conf _ -> lock conf
+      with Invalid_conf _ -> lock conf act
     end
   | Nop -> conf
-
-(* add the command that correspond to an action *)
-let play_action conf command =
-  try
-    let conf = play_action conf command in
-    {conf with commands = command :: conf.commands}
-  with End (score, path) -> raise (End (score, path@[command]))
 
 let play_game commands pb seed_id =
   let conf = ref (init pb ~seed_id) in
@@ -263,8 +263,13 @@ let check_game commands pb seed_id =
   let valid = ref true in
   try
     String.iter (fun c ->
-        valid := !valid && not (HashConfig.mem history !conf);
-        HashConfig.add history !conf ();
-        conf := play_action !conf (action_of_char c)) commands;
+      let act = action_of_char c in
+      if act = Nop then ()
+      else
+        begin
+          valid := !valid && not (HashConfig.mem history !conf);
+          HashConfig.add history !conf ();
+          conf := play_action !conf (action_of_char c)
+        end) commands;
     !valid
   with End (score, _) -> !valid

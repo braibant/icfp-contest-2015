@@ -54,7 +54,7 @@ val valid : invalid_kind
 exception Invalid_conf of invalid_kind
 exception End of int * action list
 
-(** {2 Internal functions, do not update the commands field}  *)
+(** {2 Internal functions}  *)
 val move : move_dir -> config -> config
 val rotate : turn_dir -> config -> config
 

@@ -53,7 +53,7 @@ let find_reachable_states init =
     Rules.HashConfig.replace find_reachable_states_mem init !ends;
     !ends
 
-let euristic_score conf =
+let heuristic_score conf =
   match conf with
   | End sc -> (sc-10000)*10000
   | Cont conf ->
@@ -63,35 +63,35 @@ let euristic_score conf =
       conf.full_cells;
     !sc
 
-let best_euristic_score_mem =
+let best_heuristic_score_mem =
   Rules.HashConfig.create 17
-let rec best_euristic_score conf = function
-  | 0 -> euristic_score conf
+let rec best_heuristic_score conf = function
+  | 0 -> heuristic_score conf
   | depth ->
     match conf with
-    | End _ -> euristic_score conf
+    | End _ -> heuristic_score conf
     | Cont conf ->
       try
-        Rules.HashConfig.find best_euristic_score_mem conf
+        Rules.HashConfig.find best_heuristic_score_mem conf
       with Not_found ->
         let next = find_reachable_states conf in
         let res =
           List.fold_left (fun acc (conf, _) ->
-            let score = best_euristic_score conf (depth-1) in
+            let score = best_heuristic_score conf (depth-1) in
             max acc score) min_int next
         in
-        Rules.HashConfig.replace best_euristic_score_mem conf res;
+        Rules.HashConfig.replace best_heuristic_score_mem conf res;
         res
 
 let rec play conf =
   let next = find_reachable_states conf in
   let (_, path) =
     List.fold_left (fun ((scoremax, pathmax) as acc) (conf,path) ->
-      let score = best_euristic_score conf 0 in
+      let score = best_heuristic_score conf 0 in
       if score <= scoremax then acc
       else (score, path)
     ) (min_int, []) next
   in
-  HashConfig.clear best_euristic_score_mem;
+  HashConfig.clear best_heuristic_score_mem;
   HashConfig.clear find_reachable_states_mem;
   List.fold_left play_action conf path
