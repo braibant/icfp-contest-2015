@@ -26,7 +26,6 @@ let find_reachable_states init =
                 match act with
                 | Turn dir -> (rotate dir conf, act::path)
                 | Move dir -> (move dir conf, act::path)
-                | Nop -> assert false
               in
               Queue.push node todo
             with Invalid_conf ik ->

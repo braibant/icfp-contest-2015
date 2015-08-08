@@ -42,7 +42,10 @@ let interactive ~prefix config  =
       Display.resize (s - 1);
       Display.show !state
     | c when !mode = Power->
-      state := Rules.play_action !state (Rules.action_of_char c);
+      begin match Rules.action_of_char c with
+      | None -> ()
+      | Some act -> state := Rules.play_action !state act
+      end
     | 'j' -> state := Rules.play_action !state Rules.(Move W)
     | 'l' -> state := Rules.play_action !state Rules.(Move E)
     | 'i' -> state := Rules.play_action !state Rules.(Turn CW)
@@ -54,11 +57,14 @@ let interactive ~prefix config  =
   in
   String.iter
     (fun c ->
-       (* Printf.printf "step: %c\n%!" c; *)
-       Display.show !state;
-       state := Rules.play_action !state (Rules.action_of_char c);
-       (* ignore (Graphics.wait_next_event [Graphics.Key_pressed]).Graphics.key; *)
-      mysleep 0.5;
+      (* Printf.printf "step: %c\n%!" c; *)
+      Display.show !state;
+      begin match Rules.action_of_char c with
+      | None -> ()
+      | Some act -> state := Rules.play_action !state act
+      end;
+      ignore (Graphics.wait_next_event [Graphics.Key_pressed]).Graphics.key;
+      (* mysleep 0.5; *)
     ) prefix;
   try while !continue do
       Display.show !state;

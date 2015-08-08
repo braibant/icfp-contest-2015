@@ -5,7 +5,6 @@ type turn_dir = CW | CCW
 type action =
 | Turn of turn_dir
 | Move of move_dir
-| Nop
 
 (* North-west tile is at coordinate 0,0.
    Then, going South-West increments by 1,0
@@ -141,7 +140,7 @@ let rotate dir conf =
   else raise (Invalid_conf !ik)
 
 let spawn_unit conf act =
-  let rng = Int32.(to_int (logand (shift_right_logical conf.rng_state 16) 0xEFFFl)) in
+  let rng = Int32.(to_int (logand (shift_right_logical conf.rng_state 16) 0x7FFFl)) in
   let unit_id = rng mod (List.length conf.problem.units) in
   let unit = List.nth conf.problem.units unit_id in
   let shift_y = -List.fold_left (fun acc c -> min acc c.y) (1000000) unit.members in
@@ -160,7 +159,10 @@ let spawn_unit conf act =
     unit_pivot = Cell.of_coord (unit.pivot.x, unit.pivot.y);
     rng_state = Int32.(add (mul 1103515245l conf.rng_state) 12345l);
     unit_no = conf.unit_no + 1;
-    commands = act::conf.commands }
+    commands =
+      match act with
+      | None -> conf.commands
+      | Some act -> act::conf.commands }
   in
   if conf.unit_no = conf.problem.sourceLength then
     raise (End (conf.score, List.rev conf.commands))
@@ -223,16 +225,16 @@ let init pb ~seed_id =
         (List.map (fun {x;y} -> bit_of_coord conf (x,y)) pb.filled)
         (width conf*height conf) }
   in
-  spawn_unit conf Nop
+  spawn_unit conf None
 
 let action_of_char = function
-  | 'p' | '\''| '!' | '.' | '0' | '3' -> Move W
-  | 'b' | 'c' | 'e' | 'f' | 'y' | '2' -> Move E
-  | 'a' | 'g' | 'h' | 'i' | 'j' | '4' -> Move SW
-  | 'l' | 'm' | 'n' | 'o' | ' ' | '5' -> Move SE
-  | 'd' | 'q' | 'r' | 'v' | 'z' | '1' -> Turn CW
-  | 'k' | 's' | 't' | 'u' | 'w' | 'x' -> Turn CCW
-  | '\t'| '\n'| '\r' -> Nop
+  | 'p' | '\''| '!' | '.' | '0' | '3' -> Some (Move W)
+  | 'b' | 'c' | 'e' | 'f' | 'y' | '2' -> Some (Move E)
+  | 'a' | 'g' | 'h' | 'i' | 'j' | '4' -> Some (Move SW)
+  | 'l' | 'm' | 'n' | 'o' | ' ' | '5' -> Some (Move SE)
+  | 'd' | 'q' | 'r' | 'v' | 'z' | '1' -> Some (Turn CW)
+  | 'k' | 's' | 't' | 'u' | 'w' | 'x' -> Some (Turn CCW)
+  | '\t'| '\n'| '\r' -> None
   | _ -> assert false
 
 let play_action conf act =
@@ -240,19 +242,21 @@ let play_action conf act =
   | Move dir ->
     begin
       try move dir conf
-      with Invalid_conf _ -> lock conf act
+      with Invalid_conf _ -> lock conf (Some act)
     end
   | Turn dir ->
     begin
       try rotate dir conf
-      with Invalid_conf _ -> lock conf act
+      with Invalid_conf _ -> lock conf (Some act)
     end
-  | Nop -> conf
 
 let play_game commands pb seed_id =
   let conf = ref (init pb ~seed_id) in
   try
-    String.iter (fun c -> conf := play_action !conf (action_of_char c)) commands;
+    String.iter (fun c ->
+      match action_of_char c with
+      | None -> ()
+      | Some act -> conf := play_action !conf act) commands;
     assert false
   with End (score, _) -> score
 
@@ -263,13 +267,11 @@ let check_game commands pb seed_id =
   let valid = ref true in
   try
     String.iter (fun c ->
-      let act = action_of_char c in
-      if act = Nop then ()
-      else
-        begin
-          valid := !valid && not (HashConfig.mem history !conf);
-          HashConfig.add history !conf ();
-          conf := play_action !conf (action_of_char c)
-        end) commands;
+      match action_of_char c with
+      | None -> ()
+      | Some act ->
+        valid := !valid && not (HashConfig.mem history !conf);
+        HashConfig.add history !conf ();
+        conf := play_action !conf act) commands;
     !valid
   with End (score, _) -> !valid

@@ -8,7 +8,6 @@ let tokens =
   | Move SE  -> [ 'l' ;'m' ;'n' ;'o' ;' ' ;'5' ]
   | Turn CW  -> [ 'd' ;'q' ;'r' ;'v' ;'z' ;'1' ]
   | Turn CCW -> [ 'k' ;'s' ;'t' ;'u' ;'w' ;'x' ]
-  | Nop -> ['\t'; '\n'; '\r']
 
 let empower actions =
   let n = List.length actions in

@@ -3,7 +3,6 @@ type turn_dir = CW | CCW
 type action =
 | Turn of turn_dir
 | Move of move_dir
-| Nop
 
 module Cell :
   sig
@@ -43,7 +42,7 @@ val bit_of_cell: config -> Cell.t -> int
 val coord_of_bit: config -> int -> int*int
 val cell_of_bit: config -> int -> Cell.t
 
-val action_of_char : char -> action
+val action_of_char : char -> action option
 
 type invalid_kind = int
 val invalid_overlap : invalid_kind
