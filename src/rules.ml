@@ -12,7 +12,11 @@ type action =
 module Cell =
 struct
   type t = int * int
-  let compare (a:t) (b:t) = compare a b
+  let compare ((a1,a2):t) ((b1,b2):t) =
+    let cmp = compare a1 b1 in
+    if cmp = 0
+    then compare a2 b2
+    else cmp
 
   let of_coord (column, row) =
     (row asr 1-column, (row+1) asr 1+column)
@@ -52,19 +56,45 @@ type config =  {
 
 type data =
   {
-    input: Formats_t.input
+    input: Formats_t.input;
+    width : int;
+    height : int;
+    units: Formats_t.unit_t array;
+    coord_of_bit : (int * int) array;
+    cell_of_bit : (int * int) array;
   }
 
-let width data = data.input.Formats_t.width
-let height data = data.input.Formats_t.height
-let bit_of_coord data (x,y) = x+y*width data
+module Data = struct
+  let coord_of_bit width bit =
+    let w = width in
+    let r = bit/w in
+    (bit-r*w, r)
+
+  let cell_of_bit width bit =
+    Cell.of_coord (coord_of_bit width bit)
+end
+
+let build_data input =
+  let height =  input.Formats_t.height in
+  let width =  input.Formats_t.width in
+  {input;
+   height;
+   width;
+   units = Array.of_list input.units;
+   coord_of_bit = Array.init (width * height) (Data.coord_of_bit width);
+   cell_of_bit = Array.init (width * height) (Data.cell_of_bit width);
+  }
+
+(** Memoized data  *)
+let width data = data.width
+let height data = data.height
+let coord_of_bit data bit = data.coord_of_bit.(bit)
+let cell_of_bit data bit = data.cell_of_bit.(bit)
+let bit_of_coord data (x,y) = x+y*data.width
 let bit_of_cell data cell = bit_of_coord data (Cell.to_coord cell)
-let coord_of_bit data bit =
-  let w = width data in
-  let r = bit/w in
-  (bit-r*w, r)
-let cell_of_bit data bit = Cell.of_coord (coord_of_bit data bit)
-let create_bitv data = Bitv.create (width data*height data) false
+let create_bitv data = Bitv.create (data.width*data.height) false
+let number_of_units data = Array.length data.units
+let nth_unit data id = data.units.(id)
 
 module HashableConfig =
 struct
@@ -141,8 +171,8 @@ let rotate data dir conf =
 
 let spawn_unit data conf act =
   let rng = Int32.(to_int (logand (shift_right_logical conf.rng_state 16) 0x7FFFl)) in
-  let unit_id = rng mod (List.length data.input.units) in
-  let unit = List.nth data.input.units unit_id in
+  let unit_id = rng mod (number_of_units data) in
+  let unit = nth_unit data unit_id in
   let shift_y =
     let dy = -List.fold_left (fun acc c -> min acc c.y) (1000000) unit.members in
     fun {x; y} -> Cell.(to_coord (of_coord (x, y) + (dy asr 1, (succ dy) asr 1)))
@@ -213,6 +243,7 @@ let lock data conf act =
   } in
   spawn_unit data conf act
 
+
 let init pb ~seed_id =
   let conf =
     { full_cells = Bitv.create 0 false;
@@ -224,8 +255,7 @@ let init pb ~seed_id =
       score = 0;
       commands = []}
   in
-  let data =     {input = pb} in
-
+  let data = build_data pb in
   let conf = { conf with
                full_cells =
                  Bitv.of_list_with_length

@@ -28,10 +28,7 @@ type config = private {
   commands : action list ;      (* in reverse order *)
 }
 
-type data =
-  {
-    input: Formats_t.input
-  }
+type data
 
 val width : data -> int
 val height : data -> int
