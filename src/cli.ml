@@ -54,7 +54,7 @@ let interactive ({filenames; number; memory; phrase_of_power} as options) prefix
 
 (** AI  *)
 
-let ai_f filename options tag =
+let ai_f filename options weights tag =
   let problem = open_in filename in
   let solve seed_id seed =
     Printf.printf "Problem %i, seed %i (%i/%i)-- length %i\n%!"
@@ -91,7 +91,7 @@ let ai_f filename options tag =
 let ai ({filenames; number; memory; phrase_of_power} as options) =
   let tag = String.concat " " ["main"; (Submit.utc_tag ()) ]in
   let rec main file =
-    try ai_f file options tag
+    try ai_f file options Heuristics.hand_tuned tag
     with Sys.Break ->
       if !Ia1.max_depth > 0
       then (decr Ia1.max_depth; main file)
@@ -105,13 +105,14 @@ let nuke options =
   let filenames = List.map (fun s -> "problems/" ^ s) filenames in
   let default_max_depth = !Ia1.max_depth in
   let rec main file =
-    try ai_f file options tag
+    try ai_f file options Heuristics.hand_tuned tag
     with Sys.Break ->
       if !Ia1.max_depth > 0
       then (decr Ia1.max_depth; main file)
       else (Printf.printf "Cannot decrease max_depth, skipping...\n%!")
   in
   List.iter (fun file -> Ia1.max_depth := default_max_depth; main file) filenames
+
 
 let score () =
   Printf.printf "Score board\n%s\n" @@ Scoreboard.display (Scoreboard.read ())
