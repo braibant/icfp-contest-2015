@@ -14,8 +14,8 @@ let mysleep n =
       if remaining > 0.0 then delay remaining in
   delay n
 
-let interactive ~prefix config  =
-  Display.init config;
+let interactive ~prefix data config  =
+  Display.init data config;
   Printf.printf "Command:\n \
                  ESC: quit\n \
                  +/-: resize the tiles\n \
@@ -36,38 +36,38 @@ let interactive ~prefix config  =
     | '+' ->
       let s = Display.size () in
       Display.resize (s + 1);
-      Display.show !state
+      Display.show data !state
     | '-' ->
       let s = Display.size () in
       Display.resize (s - 1);
-      Display.show !state
+      Display.show data !state
     | c when !mode = Power->
       begin match Rules.action_of_char c with
       | None -> ()
-      | Some act -> state := Rules.play_action !state act
+      | Some act -> state := Rules.play_action data !state act
       end
-    | 'j' -> state := Rules.play_action !state Rules.(Move W)
-    | 'l' -> state := Rules.play_action !state Rules.(Move E)
-    | 'i' -> state := Rules.play_action !state Rules.(Turn CW)
-    | 'k' -> state := Rules.play_action !state Rules.(Turn CCW)
-    | 'u' -> state := Rules.play_action !state Rules.(Move SW)
-    | 'o' -> state := Rules.play_action !state Rules.(Move SE)
-    | 'a' -> state := Ia1.play !state
+    | 'j' -> state := Rules.play_action  data !state Rules.(Move W)
+    | 'l' -> state := Rules.play_action  data !state Rules.(Move E)
+    | 'i' -> state := Rules.play_action  data !state Rules.(Turn CW)
+    | 'k' -> state := Rules.play_action  data !state Rules.(Turn CCW)
+    | 'u' -> state := Rules.play_action  data !state Rules.(Move SW)
+    | 'o' -> state := Rules.play_action  data !state Rules.(Move SE)
+    | 'a' -> state := Ia1.play data !state
     | _ -> ()
   in
   String.iter
     (fun c ->
       (* Printf.printf "step: %c\n%!" c; *)
-      Display.show !state;
+      Display.show data !state;
       begin match Rules.action_of_char c with
       | None -> ()
-      | Some act -> state := Rules.play_action !state act
+      | Some act -> state := Rules.play_action data !state act
       end;
       ignore (Graphics.wait_next_event [Graphics.Key_pressed]).Graphics.key;
       (* mysleep 0.5; *)
     ) prefix;
   try while !continue do
-      Display.show !state;
+      Display.show data !state;
       react (Graphics.wait_next_event [Graphics.Key_pressed]).Graphics.key;
     done;
     Printf.printf "Interrupted\n%!"; raise Exit

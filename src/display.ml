@@ -46,7 +46,7 @@ let draw_tile x y i =
     | Uninitialized -> assert false
   end
 
-let draw_hex x y i =
+let draw_hex data x y i =
   let x',y' = Rules.Cell.to_coord (x,y) in
   let s = ! s in
   try
@@ -58,19 +58,19 @@ let draw_hex x y i =
   end
   with _ -> ()
 
-let draw_config config =
+let draw_config data config =
   for i = 0 to !width - 1 do
     for j = 0 to !height - 1 do
       let (x,y) = Rules.Cell.of_coord (i,j) in
-      draw_hex x y Void;
+      draw_hex data x y Void;
     done;
   done;
 
   let f t (x,y)  =
     (* Printf.printf "x:%i  y:%i\n" x y; *)
-    draw_hex x y t in
-  Bitv.iteri_true (fun bit -> f Full (Rules.cell_of_bit config bit)) config.full_cells;
-  Bitv.iteri_true (fun bit -> f Unit (Rules.cell_of_bit config bit)) config.unit_cells;
+    draw_hex data x y t in
+  Bitv.iteri_true (fun bit -> f Full (Rules.cell_of_bit data bit)) config.full_cells;
+  Bitv.iteri_true (fun bit -> f Unit (Rules.cell_of_bit data bit)) config.unit_cells;
   f Pivot config.unit_pivot
 ;;
 
@@ -114,7 +114,7 @@ let init board =
 
 let close () = Graphics.close_graph ();;
 
-let show config =
-  draw_config config;
-  draw_score config;
+let show data config =
+  draw_config data config;
+  draw_score  config;
   Graphics.synchronize ();

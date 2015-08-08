@@ -23,25 +23,29 @@ type config = private {
   unit_pivot : Cell.t;
   rng_state : Int32.t;
   unit_no : int;
-  problem : Formats_t.input;
-
   score : int;
   ls_old : int;
   commands : action list ;      (* in reverse order *)
 }
 
-val width : config -> int
-val height : config -> int
+type data =
+  {
+    input: Formats_t.input
+  }
+
+val width : data -> int
+val height : data -> int
+val bit_of_coord: data -> int*int -> int
+val bit_of_cell: data -> Cell.t -> int
+val coord_of_bit: data -> int -> int*int
+val cell_of_bit: data -> int -> Cell.t
+val create_bitv: data -> Bitv.t
+
 
 (* Only full_cells, unit_cells, unit_pivot, unit_no *)
 module HashableConfig : Hashtbl.HashedType with type t = config
 module HashConfig : Hashtbl.S with type key = config
 
-val bit_of_coord: config -> int*int -> int
-val bit_of_cell: config -> Cell.t -> int
-val coord_of_bit: config -> int -> int*int
-val cell_of_bit: config -> int -> Cell.t
-val create_bitv: config -> Bitv.t
 
 val action_of_char : char -> action option
 
@@ -55,13 +59,13 @@ exception Invalid_conf of invalid_kind
 exception End of int * action list
 
 (** {2 Internal functions}  *)
-val move : move_dir -> config -> config
-val rotate : turn_dir -> config -> config
+val move : data -> move_dir -> config -> config
+val rotate : data -> turn_dir -> config -> config
 
 (** {2 Main functions }  *)
 
 (** Play an action to update a config *)
-val play_action : config -> action -> config
+val play_action : data -> config -> action -> config
 
 (** Play a complete game  *)
 val play_game : Formats_t.commands -> Formats_t.input -> int -> int
@@ -70,4 +74,4 @@ val play_game : Formats_t.commands -> Formats_t.input -> int -> int
 val check_game : Formats_t.commands -> Formats_t.input -> int -> bool
 
 (** Initialize the game  *)
-val init : Formats_t.input -> seed_id:int -> config
+val init : Formats_t.input -> seed_id:int -> data * config

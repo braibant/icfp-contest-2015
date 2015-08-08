@@ -41,8 +41,8 @@ let interactive filename options tag prefix : unit =
     end
     else 0
   in
-  let config = Rules.init problem seed in
-  let score, commands = Simulator.interactive ~prefix config in
+  let data,config = Rules.init problem seed in
+  let score, commands = Simulator.interactive ~prefix data config in
   let solution = Oracle.empower commands in
   let output = make_output problem seed solution tag in
   let submit = n = 1 && options.submit in
@@ -63,14 +63,15 @@ let ai_f filename options tag =
       seed_id
       (List.length problem.Formats_t.sourceSeeds -1 )
       problem.Formats_t.sourceLength;
-    let state = ref (Rules.init problem seed_id) in
+    let data, config = Rules.init problem seed_id in
+    let state = ref config in
     let n = ref 0 in
     try
       while true do
         incr n;
         if !n mod 10 = 0
         then Printf.printf "Turn %i/%i\n%!" !n       problem.Formats_t.sourceLength;
-        state := Ia1.play !state
+        state := Ia1.play data !state
       done;
       assert false
     with Rules.End (score,commands) ->

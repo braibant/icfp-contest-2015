@@ -39,22 +39,32 @@ end
 
 (* TODO : loops *)
 
-type config =
-  { full_cells: Bitv.t;
-    unit_cells: Bitv.t;
-    unit_pivot: Cell.t;
-    rng_state: Int32.t;
-    unit_no: int;
-    problem: Formats_t.input;
+type config =  {
+  full_cells : Bitv.t;
+  unit_cells : Bitv.t;
+  unit_pivot : Cell.t;
+  rng_state : Int32.t;
+  unit_no : int;
+  score : int;
+  ls_old : int;
+  commands : action list ;      (* in reverse order *)
+}
 
-    score: int;
-    ls_old: int;
-
-    commands : action list;
+type data =
+  {
+    input: Formats_t.input
   }
 
-let width config = config.problem.Formats_t.width
-let height config = config.problem.Formats_t.height
+let width data = data.input.Formats_t.width
+let height data = data.input.Formats_t.height
+let bit_of_coord data (x,y) = x+y*width data
+let bit_of_cell data cell = bit_of_coord data (Cell.to_coord cell)
+let coord_of_bit data bit =
+  let w = width data in
+  let r = bit/w in
+  (bit-r*w, r)
+let cell_of_bit data bit = Cell.of_coord (coord_of_bit data bit)
+let create_bitv data = Bitv.create (width data*height data) false
 
 module HashableConfig =
 struct
@@ -69,16 +79,6 @@ struct
 end
 module HashConfig = Hashtbl.Make(HashableConfig)
 
-let bit_of_coord conf (x,y) = x+y*width conf
-let bit_of_cell conf cell = bit_of_coord conf (Cell.to_coord cell)
-
-let coord_of_bit conf bit =
-  let w = width conf in
-  let r = bit/w in
-  (bit-r*w, r)
-let cell_of_bit conf bit = Cell.of_coord (coord_of_bit conf bit)
-
-let create_bitv conf = Bitv.create (width conf*height conf) false
 
 type invalid_kind = int
 let invalid_overlap = 1
@@ -100,16 +100,16 @@ let check_cell conf cell =
   let k = if r >= height conf then k lor invalid_bottom else k in
   k
 
-let move dir conf =
+let move data dir conf =
   let delta = Cell.delta_of_move dir in
-  let unit_cells = create_bitv conf in
+  let unit_cells = create_bitv data in
   let ik = ref valid in
   Bitv.iteri_true (fun bit ->
-    let newcell = Cell.(cell_of_bit conf bit + delta) in
-    let ik' = check_cell conf newcell in
+    let newcell = Cell.(cell_of_bit data bit + delta) in
+    let ik' = check_cell data newcell in
     ik := !ik lor ik';
     if ik' = valid then
-      Bitv.set unit_cells (bit_of_cell conf newcell) true)
+      Bitv.set unit_cells (bit_of_cell data newcell) true)
     conf.unit_cells;
   let conf =
     { conf with
@@ -121,15 +121,15 @@ let move dir conf =
   if !ik = valid then conf
   else raise (Invalid_conf !ik)
 
-let rotate dir conf =
-  let unit_cells = create_bitv conf in
+let rotate data dir conf =
+  let unit_cells = create_bitv data in
   let ik = ref valid in
   Bitv.iteri_true (fun bit ->
-    let newcell = Cell.(conf.unit_pivot + rotate dir (cell_of_bit conf bit-conf.unit_pivot)) in
-    let ik' = check_cell conf newcell in
+    let newcell = Cell.(conf.unit_pivot + rotate dir (cell_of_bit data bit-conf.unit_pivot)) in
+    let ik' = check_cell data newcell in
     ik := !ik lor ik';
     if ik' = valid then
-      Bitv.set unit_cells (bit_of_cell conf newcell) true)
+      Bitv.set unit_cells (bit_of_cell data newcell) true)
     conf.unit_cells;
   let conf = { conf with
     unit_cells;
@@ -139,10 +139,10 @@ let rotate dir conf =
   if !ik = valid then conf
   else raise (Invalid_conf !ik)
 
-let spawn_unit conf act =
+let spawn_unit data conf act =
   let rng = Int32.(to_int (logand (shift_right_logical conf.rng_state 16) 0x7FFFl)) in
-  let unit_id = rng mod (List.length conf.problem.units) in
-  let unit = List.nth conf.problem.units unit_id in
+  let unit_id = rng mod (List.length data.input.units) in
+  let unit = List.nth data.input.units unit_id in
   let shift_y =
     let dy = -List.fold_left (fun acc c -> min acc c.y) (1000000) unit.members in
     fun {x; y} -> Cell.(to_coord (of_coord (x, y) + (dy asr 1, (succ dy) asr 1)))
@@ -152,7 +152,7 @@ let spawn_unit conf act =
   let min_x = List.fold_left (fun acc c -> min acc (fst c)) (1000000) unit in
   let max_x = List.fold_left (fun acc c -> max acc (fst c)) (-1000000) unit in
   let shift_x =
-    let dx = (width conf-max_x-min_x-1) asr 1 in
+    let dx = (width data-max_x-min_x-1) asr 1 in
     fun (x, y) -> (x+dx, y)
   in
   let unit = List.map shift_x unit in
@@ -160,8 +160,8 @@ let spawn_unit conf act =
   let conf = { conf with
     unit_cells =
       Bitv.of_list_with_length
-        (List.map (fun xy -> bit_of_coord conf xy) unit)
-        (width conf*height conf);
+        (List.map (fun xy -> bit_of_coord data xy) unit)
+        (width data*height data);
     unit_pivot = Cell.of_coord unit_pivot;
     rng_state = Int32.(add (mul 1103515245l conf.rng_state) 12345l);
     unit_no = conf.unit_no + 1;
@@ -170,14 +170,14 @@ let spawn_unit conf act =
       | None -> conf.commands
       | Some act -> act::conf.commands }
   in
-  if conf.unit_no = conf.problem.sourceLength then
+  if conf.unit_no = data.input.sourceLength then
     raise (End (conf.score, List.rev conf.commands))
   else
     if unit_overlap conf
     then raise (End (conf.score, List.rev conf.commands))
     else conf
 
-let lock conf act =
+let lock data conf act =
   let size = ref 0 in
   Bitv.iteri_true (fun _ -> incr size) conf.unit_cells;
   let size = !size in
@@ -185,20 +185,20 @@ let lock conf act =
     conf with full_cells = Bitv.bw_or conf.full_cells conf.unit_cells }
   in
   let ls = ref 0 in
-  for r = height !conf-1 downto 0 do
+  for r = height data -1 downto 0 do
     let rec is_full c =
       if c < 0 then true
-      else Bitv.get !conf.full_cells (bit_of_coord !conf (c, r)) && is_full (c-1)
+      else Bitv.get !conf.full_cells (bit_of_coord data (c, r)) && is_full (c-1)
     in
-    if is_full (width !conf-1) then
+    if is_full (width data-1) then
       begin
         incr ls;
-        let full_cells = create_bitv !conf in
+        let full_cells = create_bitv data in
         Bitv.iteri_true (fun bit ->
-          let c', r' = coord_of_bit !conf bit in
+          let c', r' = coord_of_bit data bit in
           if r' = r then ()
-          else if r' < r then Bitv.set full_cells (bit_of_coord !conf (c', r'+1)) true
-          else Bitv.set full_cells (bit_of_coord !conf (c', r')) true)
+          else if r' < r then Bitv.set full_cells (bit_of_coord data (c', r'+1)) true
+          else Bitv.set full_cells (bit_of_coord data (c', r')) true)
           !conf.full_cells;
         conf := { !conf with full_cells }
       end
@@ -211,7 +211,7 @@ let lock conf act =
       ls_old = ls;
       score = conf.score + points + lines_bonus
   } in
-  spawn_unit conf act
+  spawn_unit data conf act
 
 let init pb ~seed_id =
   let conf =
@@ -220,18 +220,19 @@ let init pb ~seed_id =
       unit_pivot = (0, 0);
       rng_state = Int32.of_int (List.nth pb.sourceSeeds seed_id);
       unit_no = -1;
-      problem = pb;
       ls_old = 0;
       score = 0;
       commands = []}
   in
+  let data =     {input = pb} in
+
   let conf = { conf with
-    full_cells =
-      Bitv.of_list_with_length
-        (List.map (fun {x;y} -> bit_of_coord conf (x,y)) pb.filled)
-        (width conf*height conf) }
+               full_cells =
+                 Bitv.of_list_with_length
+                   (List.map (fun {x;y} -> bit_of_coord data (x,y)) pb.filled)
+                   (width data*height data) }
   in
-  spawn_unit conf None
+  data, spawn_unit data conf None
 
 let action_of_char = function
   | 'p' | '\''| '!' | '.' | '0' | '3' -> Some (Move W)
@@ -243,32 +244,34 @@ let action_of_char = function
   | '\t'| '\n'| '\r' -> None
   | _ -> assert false
 
-let play_action conf act =
+let play_action data conf act =
   match act with
   | Move dir ->
     begin
-      try move dir conf
-      with Invalid_conf _ -> lock conf (Some act)
+      try move data dir conf
+      with Invalid_conf _ -> lock data conf (Some act)
     end
   | Turn dir ->
     begin
-      try rotate dir conf
-      with Invalid_conf _ -> lock conf (Some act)
+      try rotate data dir conf
+      with Invalid_conf _ -> lock data conf (Some act)
     end
 
 let play_game commands pb seed_id =
-  let conf = ref (init pb ~seed_id) in
+  let data, conf = (init pb ~seed_id) in
+  let conf = ref conf in
   try
     String.iter (fun c ->
       match action_of_char c with
       | None -> ()
-      | Some act -> conf := play_action !conf act) commands;
+      | Some act -> conf := play_action data !conf act) commands;
     assert false
   with End (score, _) -> score
 
 
 let check_game commands pb seed_id =
-  let conf = ref (init pb seed_id) in
+  let data, conf = (init pb ~seed_id) in
+  let conf = ref conf in
   let history = HashConfig.create 17 in
   let valid = ref true in
   try
@@ -278,6 +281,6 @@ let check_game commands pb seed_id =
       | Some act ->
         valid := !valid && not (HashConfig.mem history !conf);
         HashConfig.add history !conf ();
-        conf := play_action !conf act) commands;
+        conf := play_action data !conf act) commands;
     !valid
   with End (score, _) -> !valid
