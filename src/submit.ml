@@ -85,7 +85,7 @@ let best_score scoreboard problem =
       else acc
     ) 0 scoreboard
 
-let main ~submit ~score input outputs  =
+let main ~submit ~score ~version input outputs  =
   let checks = check input outputs in
   let descr = List.map (fun (s,b) ->
       if b
@@ -99,6 +99,7 @@ let main ~submit ~score input outputs  =
   else Printf.printf "Check failed!\n%s\n" descr;
 
   let timestamp =  utc_tag () in
+  let timestamp = timestamp ^ " " ^ version in
 
   log timestamp input outputs;
 

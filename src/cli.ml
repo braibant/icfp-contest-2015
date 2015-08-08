@@ -45,7 +45,7 @@ let interactive filename options tag prefix : unit =
   let solution = Oracle.empower commands in
   let output = make_output problem seed solution tag in
   let submit = n = 1 && options.submit in
-  Submit.main ~score ~submit problem [output]
+  Submit.main ~score ~submit ~version:"interactive" problem [output]
 
 let interactive ({filenames; number; memory; phrase_of_power} as options) prefix =
   let tag = String.concat " " ["int"; (Submit.utc_tag ()) ]in
@@ -84,7 +84,7 @@ let ai_f filename options tag =
   let score = score / (List.length problem.Formats_t.sourceSeeds) in
   let outputs = List.map fst outputs in
 
-  Submit.main ~score ~submit:options.submit problem outputs
+  Submit.main ~score ~submit:options.submit ~version:Ia1.version problem outputs
 
 let ai ({filenames; number; memory; phrase_of_power} as options) =
   let tag = String.concat " " ["main"; (Submit.utc_tag ()) ]in

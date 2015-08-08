@@ -25,7 +25,7 @@ let best_score scoreboard (problem: Formats_t.input) =
       else acc
     ) 0 scoreboard
 
-let tabulate (scoreboard: scoreboard) : (int * int) list =
+let tabulate (scoreboard: scoreboard) : (int * int * string) list =
   let h = Hashtbl.create 17 in
   let add h key element =
     let old =
@@ -37,15 +37,20 @@ let tabulate (scoreboard: scoreboard) : (int * int) list =
   List.iter (fun (id,event) -> add h id event) scoreboard;
   Hashtbl.fold (fun id scores acc ->
       let open Formats_t in
-      let scores = List.map (fun({score}) -> score) scores in
-      let score = List.fold_left max 0 scores  in
-      (id,score)::acc) h []
+      let scores = List.map (fun({score;timestamp}) -> score,timestamp) scores in
+      let score,tag = List.fold_left (fun (score_acc, tag_acc) (score,tag) ->
+          if score_acc < score
+          then (score,tag)
+          else (score_acc, tag_acc)
+        ) (0,"") scores  in
+      (id,score,tag)::acc) h []
 ;;
 
 let display scoreboard =
   let table = tabulate scoreboard in
-  let table = List.sort (fun a b -> Pervasives.compare (fst a) (fst b)) table in
-  let lines : string list = List.map (fun (id,score) -> Printf.sprintf "|%6i: %6i|" id score) table in
+  let table = List.sort (fun (a,_,_) (b,_,_) -> Pervasives.compare  a b) table in
+  let lines : string list = List.map (fun (id,score,tag) ->
+      Printf.sprintf "|%6i: %6i        %s|" id score tag) table in
   let max_length = List.fold_left (fun acc x -> max (String.length x) acc) 0 lines in
   let line = String.make max_length '-' in
   String.concat "\n" (line::lines@[line])

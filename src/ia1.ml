@@ -1,3 +1,5 @@
+let version = "0.1"
+
 open Rules
 
 type full_conf =
