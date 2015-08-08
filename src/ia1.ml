@@ -94,7 +94,7 @@ let rec play conf =
   let next = find_reachable_states conf in
   let (_, path) =
     List.fold_left (fun ((scoremax, pathmax) as acc) (conf,path) ->
-      let score = best_heuristic_score conf 4 in
+      let score = best_heuristic_score conf 0 in
       if score <= scoremax then acc
       else (score, path)
     ) (min_int, []) next
