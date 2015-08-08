@@ -1,5 +1,5 @@
 let version = "0.3"
-let max_depth = ref 1
+let max_depth = ref 2
 
 open Rules
 
@@ -116,7 +116,7 @@ let heuristic_score conf =
     let sc = ref (conf.score*10000) in
     Bitv.iteri_true (fun bit ->
       let h = Rules.height conf - snd (Rules.coord_of_bit conf bit) in
-      sc := !sc - h*h)
+      sc := !sc - h)
       conf.full_cells;
     !sc + heuristic_line conf
 
