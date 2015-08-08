@@ -71,7 +71,7 @@ let ai_f filename options weights tag =
         incr n;
         if !n mod 10 = 0
         then Printf.printf "Turn %i/%i\n%!" !n       problem.Formats_t.sourceLength;
-        state := Ia1.play data !state
+        state := Ia1.play Heuristics.simple data !state
       done;
       assert false
     with Rules.End (score,commands) ->
@@ -179,12 +179,21 @@ let show_info =
   let doc = "Our score" in
   Term.info "score" ~doc
 
+let meta_t =
+  Term.(pure Meta.meta $ options_t)
+
+let meta_info =
+  let doc = "Our wonderful automated optimizer" in
+  Term.info "meta" ~doc
+
+
 let commands =
   [
     interactive_t, interactive_info;
     ai_t, ai_info;
     nuke_t, nuke_info;
-    show_t, show_info
+    show_t, show_info;
+    meta_t, meta_info
   ]
 
 (* let default = interactive_t, interactive_info *)

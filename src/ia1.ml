@@ -64,21 +64,21 @@ let find_reachable_states data init =
     next
 
 
-let heuristic_score data config =
+let heuristic_score heuristic data config =
   match config with
   | End sc -> (sc-10000)*10000
   | Cont config ->
-    int_of_float (Heuristics.meta Heuristics.hand_tuned data config)
+    heuristic data config
 
 
 let best_heuristic_score_mem =
   Rules.HashConfig.create 17
 
-let rec best_heuristic_score data conf = function
-  | 0 -> heuristic_score data conf
+let rec best_heuristic_score weights data conf = function
+  | 0 -> heuristic_score weights data conf
   | depth ->
     match conf with
-    | End _ -> heuristic_score data conf
+    | End _ -> heuristic_score weights data conf
     | Cont conf ->
       try
         Rules.HashConfig.find best_heuristic_score_mem conf
@@ -86,17 +86,17 @@ let rec best_heuristic_score data conf = function
         let next = find_reachable_states data conf in
         let res =
           List.fold_left (fun acc (conf, _) ->
-              let score = best_heuristic_score data conf (depth-1) in
+              let score = best_heuristic_score weights data conf (depth-1) in
               max acc score) min_int next
         in
         Rules.HashConfig.replace best_heuristic_score_mem conf res;
         res
 
-let rec play data conf =
+let rec play heuristic data conf =
   let next = find_reachable_states data conf in
   let (_, path) =
     List.fold_left (fun ((scoremax, pathmax) as acc) (conf,path) ->
-      let score = best_heuristic_score data conf !max_depth in
+      let score = best_heuristic_score heuristic data conf !max_depth in
       if score <= scoremax then acc
       else (score, path)
     ) (min_int, []) next

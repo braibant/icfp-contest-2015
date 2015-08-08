@@ -52,7 +52,7 @@ let interactive ~prefix data config  =
     | 'k' -> state := Rules.play_action  data !state Rules.(Turn CCW)
     | 'u' -> state := Rules.play_action  data !state Rules.(Move SW)
     | 'o' -> state := Rules.play_action  data !state Rules.(Move SE)
-    | 'a' -> state := Ia1.play data !state
+    | 'a' -> state := Ia1.play Heuristics.simple data !state
     | _ -> ()
   in
   String.iter

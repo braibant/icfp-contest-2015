@@ -49,13 +49,16 @@ let signals =
     score, "score"
   |]
 
-let meta weights data config : float  =
+let simple data config =
+  heuristic_base data config + score data config
+
+let meta weights data config : int =
   let acc = ref 0. in
   Array.iteri (fun i (x,l) ->
-      if weights.(i) < 0.01
+      if abs_float weights.(i) < 0.01
       then ()
       else acc := !acc +. weights.(i) *. float (x data config)) signals;
-  !acc
+  int_of_float !acc
 
 (* random vector *)
 let init () =
