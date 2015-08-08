@@ -1,0 +1,11 @@
+# Our design
+
+Our code is written in OCaml. We have implemented the core rules, a
+scoring system, and a command line interface for the game. Our AI is
+quite simple, with a few heuristic to compute moves.
+
+# Running our code
+
+We use:
+- ocaml 4.02.1
+- the packages ocamlfind, atdgen, bitv, ocurl, cmdliner
