@@ -49,6 +49,7 @@ type config =  {
   unit_pivot : Cell.t;
   rng_state : Int32.t;
   unit_no : int;
+  unit_id : int;
   score : int;
   ls_old : int;
   commands : action list ;      (* in reverse order *)
@@ -119,6 +120,7 @@ let bit_of_cell data cell = bit_of_coord data (Cell.to_coord cell)
 let create_bitv data = Bitv.create (data.width*data.height) false
 let number_of_units data = Array.length data.units
 let get_unit data id = data.units.(id)
+let units data = data.units
 
 module HashableConfig =
 struct
@@ -154,6 +156,12 @@ let check_cell data cell =
   let k = if r >= height data then k lor invalid_bottom else k in
   k
 
+let cells_of_bitv data bitv =
+  let l = ref [] in
+  Bitv.iteri_true (fun bit ->  l := cell_of_bit data bit :: !l)
+    bitv;
+  !l
+
 let move data dir conf =
   let delta = Cell.delta_of_move dir in
   let unit_cells = create_bitv data in
@@ -175,43 +183,53 @@ let move data dir conf =
   if !ik = valid then conf
   else raise (Invalid_conf !ik)
 
-let rotate data dir conf =
+let rotate_unit data bitv pivot dir =
   let unit_cells = create_bitv data in
   let ik = ref valid in
   Bitv.iteri_true (fun bit ->
-    let newcell = Cell.(conf.unit_pivot + rotate dir (cell_of_bit data bit-conf.unit_pivot)) in
-    let ik' = check_cell data newcell in
-    ik := !ik lor ik';
-    if ik' = valid then
-      Bitv.set unit_cells (bit_of_cell data newcell) true)
-    conf.unit_cells;
-  let conf = { conf with
-    unit_cells;
-    commands = Turn dir::conf.commands }
+      let newcell = Cell.(pivot + rotate dir (cell_of_bit data bit-pivot)) in
+      let ik' = check_cell data newcell in
+      ik := !ik lor ik';
+      if ik' = valid then
+        Bitv.set unit_cells (bit_of_cell data newcell) true)
+    bitv;
+  !ik, unit_cells
+
+
+let rotate data dir conf =
+  let is_valid, unit_cells = rotate_unit data conf.unit_cells conf.unit_pivot dir in
+  let ik = ref is_valid in
+  let conf = { conf with unit_cells; commands = Turn dir::conf.commands }
   in
   if unit_overlap conf then ik := !ik lor invalid_overlap;
   if !ik = valid then conf
   else raise (Invalid_conf !ik)
+
+(* may return invalid positions *)
+let rotate_unit data bitv pivot dir =
+  let is_valid, cells = rotate_unit data  bitv pivot dir in
+  cells
 
 let spawn_unit data conf act =
   let rng = Int32.(to_int (logand (shift_right_logical conf.rng_state 16) 0x7FFFl)) in
   let unit_id = rng mod (number_of_units data) in
   let unit_cells, unit_pivot = get_unit data unit_id in
   let conf = { conf with
-    unit_cells; unit_pivot;
-    rng_state = Int32.(add (mul 1103515245l conf.rng_state) 12345l);
-    unit_no = conf.unit_no + 1;
-    commands =
-      match act with
-      | None -> conf.commands
-      | Some act -> act::conf.commands }
+               unit_cells; unit_pivot;
+               rng_state = Int32.(add (mul 1103515245l conf.rng_state) 12345l);
+               unit_no = conf.unit_no + 1;
+               unit_id;
+               commands =
+                 match act with
+                 | None -> conf.commands
+                 | Some act -> act::conf.commands }
   in
   if conf.unit_no = data.input.sourceLength then
     raise (End (conf.score, List.rev conf.commands))
   else
-    if unit_overlap conf
-    then raise (End (conf.score, List.rev conf.commands))
-    else conf
+  if unit_overlap conf
+  then raise (End (conf.score, List.rev conf.commands))
+  else conf
 
 let lock data conf act =
   let size = ref 0 in
@@ -257,6 +275,7 @@ let init pb ~seed_id =
       unit_pivot = (0, 0);
       rng_state = Int32.of_int (List.nth pb.sourceSeeds seed_id);
       unit_no = -1;
+      unit_id = -1;
       ls_old = 0;
       score = 0;
       commands = []}

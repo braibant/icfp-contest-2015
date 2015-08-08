@@ -23,6 +23,7 @@ type config = private {
   unit_pivot : Cell.t;
   rng_state : Int32.t;
   unit_no : int;
+  unit_id : int;
   score : int;
   ls_old : int;
   commands : action list ;      (* in reverse order *)
@@ -37,6 +38,9 @@ val bit_of_cell: data -> Cell.t -> int
 val coord_of_bit: data -> int -> int*int
 val cell_of_bit: data -> int -> Cell.t
 val create_bitv: data -> Bitv.t
+val units: data -> (Bitv.t * (int * int)) array
+val rotate_unit: data -> Bitv.t -> int * int -> turn_dir ->  Bitv.t
+val cells_of_bitv : data -> Bitv.t -> Cell.t list
 
 
 (* Only full_cells, unit_cells, unit_pivot, unit_no *)
