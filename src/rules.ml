@@ -92,12 +92,12 @@ exception End of int *  action list
 let unit_overlap conf =
   not (Bitv.all_zeros (Bitv.bw_and conf.full_cells conf.unit_cells))
 
-let check_cell conf cell =
+let check_cell data cell =
   let c, r = Cell.to_coord cell in
   let k = 0 in
-  let k = if c < 0 || c >= width conf then k lor invalid_leftright else k in
+  let k = if c < 0 || c >= width data then k lor invalid_leftright else k in
   let k = if r < 0 then k lor invalid_up else k in
-  let k = if r >= height conf then k lor invalid_bottom else k in
+  let k = if r >= height data then k lor invalid_bottom else k in
   k
 
 let move data dir conf =

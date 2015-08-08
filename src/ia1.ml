@@ -1,4 +1,4 @@
-let version = "0.3"
+let version = "0.4-jh"
 let max_depth = ref 0
 
 open Rules
@@ -116,10 +116,24 @@ let heuristic_score data config =
   | Cont config ->
     let sc = ref (config.score*10000) in
     Bitv.iteri_true (fun bit ->
-        let h = Rules.height data - snd (Rules.coord_of_bit data bit) in
-        sc := !sc - h)
+      let h = Rules.height data - snd (Rules.coord_of_bit data bit) in
+      sc := !sc - h*h)
       config.full_cells;
-    !sc + heuristic_line data config
+    sc := !sc + heuristic_line data config;
+    let delta = [(0, 1);(1, 0);(0, -1);(-1, 0);(1,-1);(-1,1)] in
+    Bitv.iteri_true (fun bit ->
+      let cell = cell_of_bit data bit in
+      let neigh = List.map (Cell.(+) cell) delta in
+      let neigh = List.filter (fun c -> check_cell data c = 0) neigh in
+      let neig_empty = List.filter (fun c ->
+        not (Bitv.get config.full_cells (bit_of_cell data c)))
+        neigh
+      in
+      if List.length neig_empty <= 1 then sc := !sc - 40;
+      if List.length neig_empty = 2 then sc := !sc - 10;
+    ) (Bitv.bw_not config.full_cells);
+    !sc
+
 
 let best_heuristic_score_mem =
   Rules.HashConfig.create 17

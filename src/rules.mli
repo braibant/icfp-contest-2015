@@ -61,6 +61,7 @@ exception End of int * action list
 (** {2 Internal functions}  *)
 val move : data -> move_dir -> config -> config
 val rotate : data -> turn_dir -> config -> config
+val check_cell : data -> Cell.t -> int
 
 (** {2 Main functions }  *)
 
