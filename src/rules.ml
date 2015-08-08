@@ -143,20 +143,26 @@ let spawn_unit conf act =
   let rng = Int32.(to_int (logand (shift_right_logical conf.rng_state 16) 0x7FFFl)) in
   let unit_id = rng mod (List.length conf.problem.units) in
   let unit = List.nth conf.problem.units unit_id in
-  let shift_y = -List.fold_left (fun acc c -> min acc c.y) (1000000) unit.members in
-  let min_x = List.fold_left (fun acc c -> min acc c.x) (1000000) unit.members in
-  let max_x = List.fold_left (fun acc c -> max acc c.x) (-1000000) unit.members in
-  let shift_x = (width conf-max_x-min_x-1) asr 1 in
-  let unit = {
-    members = List.map (fun {x; y} -> {x=x+shift_x; y=y+shift_y}) unit.members;
-    pivot = {x=unit.pivot.x+shift_x;y=unit.pivot.y+shift_y}
-  } in
+  let shift_y =
+    let dy = -List.fold_left (fun acc c -> min acc c.y) (1000000) unit.members in
+    fun {x; y} -> Cell.(to_coord (of_coord (x, y) + (dy asr 1, (succ dy) asr 1)))
+  in
+  let unit = List.map shift_y unit.members
+  and unit_pivot = shift_y unit.pivot in
+  let min_x = List.fold_left (fun acc c -> min acc (fst c)) (1000000) unit in
+  let max_x = List.fold_left (fun acc c -> max acc (fst c)) (-1000000) unit in
+  let shift_x =
+    let dx = (width conf-max_x-min_x-1) asr 1 in
+    fun (x, y) -> (x+dx, y)
+  in
+  let unit = List.map shift_x unit in
+  let unit_pivot = shift_x unit_pivot in
   let conf = { conf with
     unit_cells =
       Bitv.of_list_with_length
-        (List.map (fun {x;y} -> bit_of_coord conf (x,y)) unit.members)
+        (List.map (fun xy -> bit_of_coord conf xy) unit)
         (width conf*height conf);
-    unit_pivot = Cell.of_coord (unit.pivot.x, unit.pivot.y);
+    unit_pivot = Cell.of_coord unit_pivot;
     rng_state = Int32.(add (mul 1103515245l conf.rng_state) 12345l);
     unit_no = conf.unit_no + 1;
     commands =
