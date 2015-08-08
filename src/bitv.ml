@@ -56,6 +56,13 @@ let high_mask = Array.init (succ bpi) (fun j -> low_mask.(j) lsl (bpi-j))
 
 let keep_highest_bits a j = a land high_mask.(j)
 
+let hash (t:t) = Hashtbl.hash t.bits
+let rec equal_bits (a: int array) b i n =
+  i = n || (a.(i) = b.(i) && equal_bits a b (i + 1) n)
+let equal a b =
+  a.length = b.length
+  && equal_bits a.bits b.bits 0 a.length
+
 (*s Creating and normalizing a bit vector is easy: it is just a matter of
     taking care of the invariant. Copy is immediate. *)
 
@@ -748,5 +755,3 @@ let select_to f32 f64 = match Sys.word_size with
   | _ -> assert false
 let to_nativeint_s = select_to to_int32_s to_int64_s
 let to_nativeint_us = select_to to_int32_us to_int64_us
-
-

@@ -126,11 +126,14 @@ module HashableConfig =
 struct
   type t = config
   let equal config1 config2 =
-    (config1.full_cells, config1.unit_cells, config1.unit_pivot, config1.unit_no) =
-    (config2.full_cells, config2.unit_cells, config2.unit_pivot, config2.unit_no)
+    config1.unit_no = config2.unit_no
+    && config1.unit_pivot = config2.unit_pivot
+    && Bitv.equal config1.full_cells config2.full_cells
+    && Bitv.equal config1.unit_cells config2.unit_cells
 
   let hash config =
-    Hashtbl.hash (config.full_cells, config.unit_cells,
+    Hashtbl.hash (Bitv.hash config.full_cells,
+                  Bitv.hash config.unit_cells,
                   config.unit_pivot, config.unit_no)
 end
 module HashConfig = Hashtbl.Make(HashableConfig)
@@ -232,9 +235,7 @@ let spawn_unit data conf act =
   else conf
 
 let lock data conf act =
-  let size = ref 0 in
-  Bitv.iteri_true (fun _ -> incr size) conf.unit_cells;
-  let size = !size in
+  let size = Bitv.pop conf.unit_cells in
   let conf = ref {
     conf with full_cells = Bitv.bw_or conf.full_cells conf.unit_cells }
   in

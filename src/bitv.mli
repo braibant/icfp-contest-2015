@@ -26,6 +26,8 @@
 
 type t
 
+val equal : t -> t -> bool
+val hash: t -> int
 (*s {\bf Creation, access and assignment.} \label{barray}
     [(Bitv.create n b)] creates a new bit vector of length [n],
     initialized with [b].
