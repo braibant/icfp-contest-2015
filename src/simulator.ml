@@ -28,7 +28,7 @@ let interactive ~prefix config  =
   let mode = ref Sane in
 
   let react c =
-    Printf.printf "react %c\n%!" c;
+    (* Printf.printf "react %c\n%!" c; *)
     match c with
     | c when int_of_char c = 27 -> continue := false
     | 'p' -> mode := Power
@@ -54,10 +54,11 @@ let interactive ~prefix config  =
   in
   String.iter
     (fun c ->
-       Printf.printf "step: %c\n%!" c;
+       (* Printf.printf "step: %c\n%!" c; *)
        Display.show !state;
        state := Rules.play_action !state (Rules.action_of_char c);
-       mysleep 0.5
+       (* ignore (Graphics.wait_next_event [Graphics.Key_pressed]).Graphics.key; *)
+      mysleep 0.5;
     ) prefix;
   try while !continue do
       Display.show !state;

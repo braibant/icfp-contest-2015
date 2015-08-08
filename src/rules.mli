@@ -57,7 +57,6 @@ exception End of int * action list
 (** {2 Internal functions, do not update the commands field}  *)
 val move : move_dir -> config -> config
 val rotate : turn_dir -> config -> config
-val lock : config -> config
 
 (** {2 Main functions }  *)
 
@@ -71,4 +70,4 @@ val play_game : Formats_t.commands -> Formats_t.input -> int -> int
 val check_game : Formats_t.commands -> Formats_t.input -> int -> bool
 
 (** Initialize the game  *)
-val init : Formats_t.input -> int -> config
+val init : Formats_t.input -> seed_id:int -> config

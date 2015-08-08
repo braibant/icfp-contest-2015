@@ -198,7 +198,7 @@ let lock conf =
   } in
   spawn_unit conf
 
-let init pb seed_id =
+let init pb ~seed_id =
   let conf =
     { full_cells = Bitv.create 0 false;
       unit_cells = Bitv.create 0 false;
@@ -250,7 +250,7 @@ let play_action conf command =
   with End (score, path) -> raise (End (score, path@[command]))
 
 let play_game commands pb seed_id =
-  let conf = ref (init pb seed_id) in
+  let conf = ref (init pb ~seed_id) in
   try
     String.iter (fun c -> conf := play_action !conf (action_of_char c)) commands;
     assert false

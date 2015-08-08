@@ -17,5 +17,3 @@ let write scoreboard =
   let s = Formats_j.string_of_scoreboard scoreboard in
   Printf.fprintf channel "%s%!" s;
   close_out channel
-
-let map f = write (f (read ()))

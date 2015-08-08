@@ -72,6 +72,13 @@ let publish ~token ~team_id data =
 let publish input outputs =
   publish Global.token Global.team_id (Formats_j.string_of_output_l outputs)
 
+let best_score scoreboard problem =
+  List.fold_left (fun acc {id;score} ->
+      if problem.id = id
+      then max score acc
+      else acc
+    ) min_int scoreboard
+
 let main ~submit ~score input outputs  =
   let checks = check input outputs in
   let descr = List.map (fun (s,b) ->
@@ -89,14 +96,15 @@ let main ~submit ~score input outputs  =
 
   log timestamp input outputs;
 
-    if submit then publish input outputs else ();
+  let scoreboard = Scoreboard.read () in
+  let event = Formats_t.{
+      id = input.id;
+      timestamp;
+      outputs;
+      submitted = submit;
+      score;
+    } in
+  Scoreboard.write (event::scoreboard);
 
-    let scoreboard = Scoreboard.read () in
-    let event = Formats_t.{
-        id = input.id;
-        timestamp;
-        outputs;
-        submitted = submit;
-        score;
-      } in
-    Scoreboard.write (event::scoreboard)
+  if submit && best_score scoreboard input < event.score
+  then publish input outputs else ();
