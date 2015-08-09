@@ -46,29 +46,28 @@ module HashableConfigPiece = struct
 end
 module HashConfigPiece= Hashtbl.Make(HashableConfigPiece);;
 
-let seen = HashPiece.create 17
-let todo = Queue.create ()
-let next = HashConfigPiece.create 17
-let best_ends = ref (-1, [])
-let lock_action = ref None
-let insert_action data conf path act =
-  try
-    let node =
-      match act with
-      | (CW | CCW) as dir -> (rotate data dir conf, act::path)
-      | dir -> (move data dir conf, act::path)
-    in
-    Queue.push node todo
-  with Invalid_conf ik ->
-    if ik land (invalid_overlap lor invalid_bottom) <> 0 then
-      lock_action := Some act
+module WithPath = struct
 
-let find_reachable_states data init =
-  try
-    let r = Rules.HashConfig.find find_reachable_states_mem init in
-    init.Rules.mark <- !find_reachable_states_mark;
-    r
-  with Not_found ->
+  let seen = HashPiece.create 17
+  let todo = Queue.create ()
+  let next = HashConfigPiece.create 17
+  let best_ends = ref (-1, [])
+  let lock_action = ref None
+  let insert_action data conf path act =
+    try
+      let node =
+        match act with
+        | (CW | CCW) as dir -> (rotate data dir conf, act::path)
+        | dir -> (move data dir conf, act::path)
+      in
+      Queue.push node todo
+    with Invalid_conf ik ->
+      if ik land (invalid_overlap lor invalid_bottom) <> 0 then
+        lock_action := Some act
+
+  let find_reachable_states data init =
+    (* do not attempt to memoize, this function is only called at top
+       level *)
     HashPiece.clear seen;
     Queue.clear todo;
     Queue.push (init, []) todo;
@@ -105,10 +104,75 @@ let find_reachable_states data init =
       if fst !best_ends >= 0 then (End (fst !best_ends), snd !best_ends)::next else next
     in
     assert (next <> []);
-    Rules.HashConfig.replace find_reachable_states_mem init next;
-    init.Rules.mark <- !find_reachable_states_mark;
     next
 
+end
+
+module WithoutPath = struct
+  let seen = HashPiece.create 17
+  let todo = Queue.create ()
+  let next = HashConfigPiece.create 17
+  let best_ends = ref (-1)
+  let lock_action = ref None
+  let insert_action data conf act =
+    try
+      let node =
+      match act with
+      | (CW | CCW) as dir -> (rotate data dir conf)
+      | dir -> (move data dir conf)
+      in
+      Queue.push node todo
+    with Invalid_conf ik ->
+      if ik land (invalid_overlap lor invalid_bottom) <> 0 then
+      lock_action := Some act
+
+  let find_reachable_states data init =
+    try
+      let r = Rules.HashConfig.find find_reachable_states_mem init in
+      init.Rules.mark <- !find_reachable_states_mark;
+      r
+    with Not_found ->
+      HashPiece.clear seen;
+      Queue.clear todo;
+      Queue.push (init) todo;
+      HashConfigPiece.clear next;
+      best_ends := (-1);
+      while not (Queue.is_empty todo) do
+        let conf = Queue.pop todo in
+        let piece = ( conf.unit_cells,conf.unit_pivot) in
+        if HashPiece.mem seen piece then ()
+        else
+          begin
+            HashPiece.add seen piece ();
+            lock_action := None;
+            insert_action data conf ( E);
+            insert_action data conf ( W);
+            insert_action data conf ( SW);
+            insert_action data conf ( SE);
+            insert_action data conf ( CW);
+            insert_action data conf ( CCW);
+            begin match !lock_action with
+              | None -> ()
+              | Some act ->
+                try HashConfigPiece.replace next (play_action data conf act) ()
+                with Rules.End (score, _path) ->
+                  if score >  !best_ends then
+                    best_ends := (score)
+            end
+          end
+      done;
+      let next = HashConfigPiece.fold (fun conf _ acc -> (Cont conf)::acc) next [] in
+      let next =
+        if  !best_ends >= 0 then End (!best_ends)::next else next
+      in
+      assert (next <> []);
+      Rules.HashConfig.replace find_reachable_states_mem init next;
+      init.Rules.mark <- !find_reachable_states_mark;
+      next
+end
+
+let find_reachable_states = WithPath.find_reachable_states
+let find_reachable_states_without_path = WithoutPath.find_reachable_states
 
 let heuristic_score data config =
   match config with
@@ -117,42 +181,42 @@ let heuristic_score data config =
     Heuristics.simple data config
 
 
-let best_heuristic_score_mem =
-  Rules.HashConfig.create 17
+(* let best_heuristic_score_mem = *)
+(*   Rules.HashConfig.create 17 *)
 
-let rec best_heuristic_score data conf = function
-  | 0 -> heuristic_score data conf
-  | depth ->
-    match conf with
-    | End _ -> heuristic_score data conf
-    | Cont conf ->
-      try
-        Rules.HashConfig.find best_heuristic_score_mem conf
-      with Not_found ->
-        let next = find_reachable_states data conf in
-        Printf.printf "At depth %i, %i possible choices\n%!" (!max_depth - depth) (List.length next);
-        let res =
-          List.fold_left (fun acc (conf, _) ->
-              let score = best_heuristic_score data conf (depth-1) in
-              max acc score) min_int next
-        in
-        Rules.HashConfig.replace best_heuristic_score_mem conf res;
-        res
+(* let rec best_heuristic_score data conf = function *)
+(*   | 0 -> heuristic_score data conf *)
+(*   | depth -> *)
+(*     match conf with *)
+(*     | End _ -> heuristic_score data conf *)
+(*     | Cont conf -> *)
+(*       try *)
+(*         Rules.HashConfig.find best_heuristic_score_mem conf *)
+(*       with Not_found -> *)
+(*         let next = find_reachable_states data conf in *)
+(*         Printf.printf "At depth %i, %i possible choices\n%!" (!max_depth - depth) (List.length next); *)
+(*         let res = *)
+(*           List.fold_left (fun acc (conf, _) -> *)
+(*               let score = best_heuristic_score data conf (depth-1) in *)
+(*               max acc score) min_int next *)
+(*         in *)
+(*         Rules.HashConfig.replace best_heuristic_score_mem conf res; *)
+(*         res *)
 
 
 
-let rec play data conf =
-  let next = find_reachable_states data conf in
-  let (_, path) =
-    List.fold_left (fun ((scoremax, pathmax) as acc) (conf,path) ->
-      let score = best_heuristic_score data conf !max_depth in
-      if score <= scoremax then acc
-      else (score, path)
-    ) (min_int, []) next
-  in
-  HashConfig.clear best_heuristic_score_mem;
-  HashConfig.clear find_reachable_states_mem;
-  List.fold_left (play_action data) conf (List.rev path)
+(* let rec play data conf = *)
+(*   let next = find_reachable_states data conf in *)
+(*   let (_, path) = *)
+(*     List.fold_left (fun ((scoremax, pathmax) as acc) (conf,path) -> *)
+(*       let score = best_heuristic_score data conf !max_depth in *)
+(*       if score <= scoremax then acc *)
+(*       else (score, path) *)
+(*     ) (min_int, []) next *)
+(*   in *)
+(*   HashConfig.clear best_heuristic_score_mem; *)
+(*   HashConfig.clear find_reachable_states_mem; *)
+(*   List.fold_left (play_action data) conf (List.rev path) *)
 
 
 (* compute the best outcome in the given set *)
@@ -173,8 +237,8 @@ let increase_depth data (l: t) : t =
       | End _ -> r := (conf, path) :: !r
       | Cont conf ->
         List.iter
-          (fun (c,_) -> r := (c,path) :: !r)
-          (find_reachable_states data conf)
+          (fun c -> r := (c,path) :: !r)
+          (find_reachable_states_without_path data conf)
     ) l;
   !r
 
