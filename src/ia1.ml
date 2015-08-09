@@ -141,8 +141,9 @@ let breadth data next depth =
             let next = find_reachable_states data conf in
             List.iter (fun (conf', _) -> add q conf' path) next
         ) next;
-      Printf.printf "Size %i\n%!" (Q.size q);
-      let next = Q.pop_n q (depth * 5 + 10) in
+      let keeping = (depth * 5 + 10) in
+      Printf.printf "Size %i (keeping %i)\n%!" (Q.size q) keeping;
+      let next = Q.pop_n q keeping in
       let next = List.map (fun (_,conf,path) -> conf, path) next in
       breadth next (depth -1)
   in
