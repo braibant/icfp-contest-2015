@@ -118,7 +118,9 @@ let pick_best data next =
       else (score, path))
     (min_int, []) next
 
-let breadth data next depth =
+(* given a list of (full_conf, action list), finds the n best
+   ones.  *)
+let best_candidates data l n =
   let module T =
   struct
     type t = int * full_conf * Rules.action list
@@ -130,24 +132,56 @@ let breadth data next depth =
   let add q conf path =
     Q.add q (heuristic_score data conf, conf, path)
   in
-  let rec breadth next = function
-    | 0 -> pick_best data next
-    | depth ->
-      let q = Q.create 1000 in
-      List.iter (fun (conf,path) ->
-          match conf with
-          | End _ -> add q conf path
-          | Cont conf ->
-            let next = find_reachable_states data conf in
-            List.iter (fun (conf', _) -> add q conf' path) next
-        ) next;
-      let keeping = (depth * 5 + 10) in
-      Printf.printf "Size %i (keeping %i)\n%!" (Q.size q) keeping;
-      let next = Q.pop_n q keeping in
-      let next = List.map (fun (_,conf,path) -> conf, path) next in
-      breadth next (depth -1)
-  in
-  breadth  next depth
+  let q = Q.create 1000 in
+  List.iter (fun (conf, path) -> add q conf path) l;
+  Q.pop_n q n
+  |> List.map (fun (_,conf,path) -> conf, path)
+
+(* increase the depth of a list of possible moves (i.e., apply
+   find_reachable_states when possible), while keeping the path
+   identical. *)
+let increase_depth data l =
+  let r = ref [] in
+  List.iter (fun (conf, path) ->
+      match conf with
+      | End _ -> r := (conf, path) :: !r
+      | Cont conf ->
+        List.iter
+          (fun (c,_) -> r := (c,path) :: !r)
+          (find_reachable_states data conf)
+    ) l;
+  !r
+
+let breadth data next depth =
+    (* assume that next has no duplicates in it. *)
+    let rec breadth next = function
+      | 0 -> pick_best data next
+      | depth ->
+        let keeping = max depth 10 in
+        let seen = Rules.HashConfig.create 17 in
+        let best_ends = ref (-1, []) in
+        Printf.printf "Size %i (keeping %i)\n%!" (List.length next) keeping;
+
+        let next = best_candidates data next keeping
+                   |> increase_depth data in
+
+        let l = ref [] in
+        List.iter (fun (conf, path) ->
+            match conf with
+            | End score ->
+              if score > fst !best_ends then
+                best_ends := (score, path);
+            | Cont c' ->
+              if Rules.HashConfig.mem seen c'
+              then ()
+              else l := (conf,path) :: !l)
+          next;
+        let next =
+          if fst !best_ends >= 0 then (End (fst !best_ends), snd !best_ends):: !l else !l
+        in
+        breadth next (depth - 1)
+    in
+    breadth  next depth
 
 let rec play data conf =
   let next = find_reachable_states data conf in
