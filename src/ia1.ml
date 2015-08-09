@@ -8,6 +8,8 @@ type full_conf =
 | Cont of config
 | End of int
 
+type t = (full_conf * Rules.action list) list
+
 let find_reachable_states_mem =
   Rules.HashConfig.create 17
 
@@ -127,36 +129,17 @@ let rec play data conf =
 
 
 (* compute the best outcome in the given set *)
-let pick_best data next =
+let pick_best data (next:t) : int * Rules.action list =
   List.fold_left (fun ((scoremax, pathmax) as acc) (conf,path) ->
       let score = heuristic_score data conf in
       if score <= scoremax then acc
       else (score, path))
     (min_int, []) next
 
-(* given a list of (full_conf, action list), finds the n best
-   ones.  *)
-let best_candidates data l n =
-  let module T =
-  struct
-    type t = int * full_conf * Rules.action list
-    let compare (a,_,_) (b,_,_) =
-      Pervasives.compare (a: int)  b
-  end
-  in
-  let module Q = Binary_heap.Make(T) in
-  let add q conf path =
-    Q.add q (heuristic_score data conf, conf, path)
-  in
-  let q = Q.create 1000 in
-  List.iter (fun (conf, path) -> add q conf path) l;
-  Q.pop_n q n
-  |> List.map (fun (_,conf,path) -> conf, path)
-
 (* increase the depth of a list of possible moves (i.e., apply
    find_reachable_states when possible), while keeping the path
    identical. *)
-let increase_depth data l =
+let increase_depth data (l: t) : t =
   let r = ref [] in
   List.iter (fun (conf, path) ->
       match conf with
@@ -168,40 +151,72 @@ let increase_depth data l =
     ) l;
   !r
 
-let breadth data next depth =
-    (* assume that next has no duplicates in it. *)
-    let rec breadth next = function
-      | 0 -> pick_best data next
-      | depth ->
-        let keeping = max depth 10 in
-        let seen = Rules.HashConfig.create 17 in
-        let best_ends = ref (-1, []) in
-        (* Printf.printf "Size %i (keeping %i)\n%!" (List.length next) keeping; *)
+(* given a list of (full_conf, action list), finds the n best
+   ones.  *)
+let best_candidates score ~keeping l =
+  let module T =
+  struct
+    type t = int * full_conf * Rules.action list
+    let compare (a,_,_) (b,_,_) =
+      Pervasives.compare (a: int)  b
+  end
+  in
+  let module Q = Binary_heap.Make(T) in
+  let add q conf path =
+    Q.add q (score conf, conf, path)
+  in
+  let q = Q.create 1000 in
+  List.iter (fun (conf, path) -> add q conf path) l;
+  Q.pop_n q keeping
+  |> List.map (fun (_,conf,path) -> conf, path)
 
-        let next = best_candidates data next keeping
-                   |> increase_depth data in
 
-        let l = ref [] in
-        List.iter (fun (conf, path) ->
-            match conf with
-            | End score ->
-              if score > fst !best_ends then
-                best_ends := (score, path);
-            | Cont c' ->
-              if Rules.HashConfig.mem seen c'
-              then ()
-              else l := (conf,path) :: !l)
-          next;
-        let next =
-          if fst !best_ends >= 0 then (End (fst !best_ends), snd !best_ends):: !l else !l
-        in
-        breadth next (depth - 1)
+let dedup : t -> t =
+  let seen = Rules.HashConfig.create 17 in
+  let best_ends = ref (-1, []) in
+  fun (next:t) ->
+    let l = ref [] in
+    List.iter (fun (conf, path) ->
+        match conf with
+        | End score ->
+          if score > fst !best_ends then
+            best_ends := (score, path);
+        | Cont c' ->
+          if Rules.HashConfig.mem seen c'
+          then ()
+          else
+            begin
+              Rules.HashConfig.add seen c' ();
+              l := (conf,path) :: !l
+            end)
+      next;
+    let result =
+      if fst !best_ends >= 0 then (End (fst !best_ends), snd !best_ends):: !l else !l
     in
-    breadth  next depth
+    Rules.HashConfig.clear seen;
+    best_ends := (-1,[]);
+    result
+
+let breadth data next ~depth ~keeping =
+  (* assume that next has no duplicates in it. *)
+  let rec breadth ~depth ~keeping next : (int * Rules.action list)=
+    match depth with
+    | 0 ->
+      (* let next = best_candidates (markov data ~depth:10) ~keeping next in *)
+      pick_best data next
+    | depth ->
+      let depth = depth - 1 in
+      Printf.printf "Size %i (keeping %i)\n%!" (List.length next) keeping;
+      let next = best_candidates (heuristic_score data) ~keeping:(keeping + 2*depth) next in
+      let next = increase_depth data next in
+      let next = dedup next in
+      breadth next ~depth ~keeping
+  in
+  breadth  ~depth ~keeping next
 
 let rec play data conf =
   let next = find_reachable_states data conf in
-  let (_,path) = breadth data next !max_depth in
+  let (_,path) = breadth data next !max_depth 10 in
   (* HashConfig.clear find_reachable_states_mem; *)
   clear_old_elements ();
   incr find_reachable_states_mark;
