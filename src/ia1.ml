@@ -24,7 +24,18 @@ let clear_old_elements () =
     ) find_reachable_states_mem;
   Queue.iter (Rules.HashConfig.remove find_reachable_states_mem) q
 
-let seen = Hashtbl.create 17
+
+module HashablePiece = struct
+  type t = Bitv.t * (int * int)
+  let equal : t -> t -> bool = fun (av, (ax,ay)) (bv, (bx,by)) ->
+    ax = bx && ay = by && Bitv.equal av bv
+  let hash (av,(ax,ay)) =
+    (Bitv.hash av lsl 32 + ax  lsl 16 + ay) land max_int
+end
+
+module HashPiece = Hashtbl.Make(HashablePiece)
+
+let seen = HashPiece.create 17
 let todo = Queue.create ()
 let next = Rules.HashConfig.create 17
 let best_ends = ref (-1, [])
@@ -47,17 +58,18 @@ let find_reachable_states data init =
     init.Rules.mark <- !find_reachable_states_mark;
     r
   with Not_found ->
-    Hashtbl.clear seen;
+    HashPiece.clear seen;
     Queue.clear todo;
     Queue.push (init, []) todo;
     Rules.HashConfig.clear next;
     best_ends := (-1, []);
     while not (Queue.is_empty todo) do
       let (conf, path) = Queue.pop todo in
-      if Hashtbl.mem seen (conf.unit_pivot, conf.unit_cells) then ()
+      let piece = ( conf.unit_cells,conf.unit_pivot) in
+      if HashPiece.mem seen piece then ()
       else
         begin
-          Hashtbl.add seen (conf.unit_pivot, conf.unit_cells) ();
+          HashPiece.add seen piece ();
           lock_action := None;
           insert_action data conf path (Move E);
           insert_action data conf path (Move W);
