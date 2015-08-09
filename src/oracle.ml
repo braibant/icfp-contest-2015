@@ -225,9 +225,17 @@ let empower_power actions data conf =
   Random.init 18;
   let pw =
     List.map (fun (pw, prio) -> gen_pw pw prio)
-      ["ia! ia! ", 20;
-       "ei!", 10; "ia! ia!", 8; "r'lyeh", 7;
-       "yuggoth", 6; "yogsothoth", 4; "hastur", 9]
+      ["ia! ia! ",     200;
+       "ei!",          100;
+       "ia! ia!",      80;
+       "r'lyeh",       70;
+       "yuggoth",      60;
+       "yogsothoth",   40;
+       "hastur",       90;
+       "ph'nglui mglw'nafh cthulhu r'lyeh wgah'nagl fhtagn.", 0;
+       "tsathoggua",   40;
+       "necronomicon", 20
+      ]
   in
   let simple_act =
     [Move W,"p"; Move E,"b"; Turn CW,"d"; Turn CCW,"k"; Move SW,"a"; Move SE,"l"]
