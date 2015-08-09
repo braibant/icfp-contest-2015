@@ -19,7 +19,7 @@ module Cell :
 
 type config = {
   full_cells : Bitv.t;
-  unit_cells : Bitv.t;
+  unit_cells : Cell.t array;
   unit_pivot : Cell.t;
   rng_state : Int32.t;
   unit_no : int;
@@ -40,8 +40,8 @@ val bit_of_cell: data -> Cell.t -> int
 val coord_of_bit: data -> int -> int*int
 val cell_of_bit: data -> int -> Cell.t
 val create_bitv: data -> Bitv.t
-val units: data -> (Bitv.t * (int * int)) array
-val rotate_unit: data -> Bitv.t -> int * int -> turn_dir ->  Bitv.t
+val units: data -> (Cell.t array * (int * int)) array
+val rotate_unit: data -> Cell.t array -> int * int -> turn_dir -> Cell.t array
 val cells_of_bitv : data -> Bitv.t -> Cell.t list
 
 

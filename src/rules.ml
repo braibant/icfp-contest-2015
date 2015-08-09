@@ -9,9 +9,23 @@ type action =
 (* North-west tile is at coordinate 0,0.
    Then, going South-West increments by 1,0
                South-East increments by 0,1 *)
-module Cell =
+module Cell :
+sig
+  type t = int * int
+  val compare : t -> t -> int
+  val of_coord : int * int -> t
+  val to_coord : t -> int * int
+  val make : int * int -> t
+  val ( + ) : t -> t -> t
+  val ( - ) : t -> t -> t
+  val ( ~- ) : t -> t
+  val rotate : turn_dir -> t -> t
+  val delta_of_move : move_dir -> t
+end
+=
 struct
   type t = int * int
+  let make i = i
   let compare ((a1,a2):t) ((b1,b2):t) =
     let cmp = compare a1 b1 in
     if cmp = 0
@@ -45,7 +59,7 @@ end
 
 type config =  {
   full_cells : Bitv.t;
-  unit_cells : Bitv.t;
+  unit_cells : Cell.t array;
   unit_pivot : Cell.t;
   rng_state : Int32.t;
   unit_no : int;
@@ -63,8 +77,8 @@ type data =
     width : int;
     height : int;
     coord_of_bit : (int * int) array;
-    cell_of_bit : (int * int) array;
-    units: (Bitv.t * (int * int)) array;
+    cell_of_bit : Cell.t array;
+    units: (Cell.t array * Cell.t) array;
   }
 
 module Data = struct
@@ -73,7 +87,7 @@ module Data = struct
     let r = bit/w in
     (bit-r*w, r)
 
-  let cell_of_bit width bit =
+  let cell_of_bit width bit : Cell.t =
     Cell.of_coord (coord_of_bit width bit)
 
   let bit_of_coord width (x,y) = x+y*width
@@ -81,7 +95,7 @@ module Data = struct
   let center_unit width height unit =
     let shift_y =
       let dy = -List.fold_left (fun acc c -> min acc c.y) (1000000) unit.members in
-      fun {x; y} -> Cell.(to_coord (of_coord (x, y) + (dy asr 1, (succ dy) asr 1)))
+      fun {x; y} -> Cell.(to_coord (of_coord (x, y) + make (dy asr 1, (succ dy) asr 1)))
     in
     let members = List.map shift_y unit.members
     and pivot = shift_y unit.pivot in
@@ -93,10 +107,7 @@ module Data = struct
     in
     let members = List.map shift_x members
     and pivot = shift_x pivot in
-    let members =
-      Bitv.of_list_with_length
-        (List.map (fun xy -> bit_of_coord width xy) members)
-        (width*height)
+    let members = Array.of_list ( List.map Cell.of_coord members)
     and pivot = Cell.of_coord pivot in
     (members, pivot)
 end
@@ -131,16 +142,17 @@ struct
     config1.unit_no = config2.unit_no
     && config1.unit_pivot = config2.unit_pivot
     && Bitv.equal config1.full_cells config2.full_cells
-    && Bitv.equal config1.unit_cells config2.unit_cells
+    && config1.unit_cells = config2.unit_cells
+    (* && Bitv.equal config1.unit_cells config2.unit_cells *)
 
   let hash config =
     Hashtbl.hash (Bitv.hash config.full_cells,
-                  Bitv.hash config.unit_cells,
+                  Hashtbl.hash config.unit_cells,
                   config.unit_pivot, config.unit_no)
 
   let hash config =
     Hashtbl.hash (Bitv.hash config.full_cells,
-                  Bitv.hash config.unit_cells,
+                  Hashtbl.hash config.unit_cells,
                   config.unit_pivot, config.unit_no)
 
 end
@@ -156,8 +168,16 @@ let valid = 0
 exception Invalid_conf of invalid_kind
 exception End of int *  action list
 
-let unit_overlap conf =
-  not (Bitv.all_zeros (Bitv.bw_and conf.full_cells conf.unit_cells))
+let unit_overlap data conf =
+  let r = ref false in
+  let n = Bitv.length conf.full_cells in
+  Array.iter (fun cell ->
+      let bit = bit_of_cell data cell in
+      if 0 <= bit && bit < n
+      then r:= !r || Bitv.get conf.full_cells (bit_of_cell data cell);
+    ) conf.unit_cells;
+  !r
+  (* not (Bitv.all_zeros (Bitv.bw_and conf.full_cells conf.unit_cells)) *)
 
 let check_cell data cell =
   let c, r = Cell.to_coord cell in
@@ -175,56 +195,51 @@ let cells_of_bitv data bitv =
 
 let move data dir conf =
   let delta = Cell.delta_of_move dir in
-  let unit_cells = create_bitv data in
   let ik = ref valid in
-  Bitv.iteri_true (fun bit ->
-    let newcell = Cell.(cell_of_bit data bit + delta) in
-    let ik' = check_cell data newcell in
-    ik := !ik lor ik';
-    if ik' = valid then
-      Bitv.set unit_cells (bit_of_cell data newcell) true)
-    conf.unit_cells;
+  let unit_cells = Array.map (fun cell ->
+      let newcell =       Cell.(cell + delta) in
+      let ik' = check_cell data newcell in
+      ik := !ik lor ik';
+      newcell)
+      conf.unit_cells in
   let conf =
     { conf with
       unit_cells;
       unit_pivot = Cell.(delta + conf.unit_pivot);
       commands = Move dir::conf.commands }
   in
-  if unit_overlap conf then ik := !ik lor invalid_overlap;
+  if unit_overlap data conf then ik := !ik lor invalid_overlap;
   if !ik = valid then conf
   else raise (Invalid_conf !ik)
 
 let move_back data dir conf =
   let delta = Cell.delta_of_move dir in
-  let unit_cells = create_bitv data in
   let ik = ref valid in
-  Bitv.iteri_true (fun bit ->
-    let newcell = Cell.(cell_of_bit data bit - delta) in
-    let ik' = check_cell data newcell in
-    ik := !ik lor ik';
-    if ik' = valid then
-      Bitv.set unit_cells (bit_of_cell data newcell) true)
-    conf.unit_cells;
+  let unit_cells = Array.map (fun cell ->
+      let newcell =       Cell.(cell - delta) in
+      let ik' = check_cell data newcell in
+      ik := !ik lor ik';
+      newcell)
+      conf.unit_cells in
   let conf =
     { conf with
       unit_cells;
       unit_pivot = Cell.(conf.unit_pivot - delta);
       commands = [] }
   in
-  if unit_overlap conf then ik := !ik lor invalid_overlap;
+  if unit_overlap data conf then ik := !ik lor invalid_overlap;
   if !ik = valid then conf
   else raise (Invalid_conf !ik)
 
-let rotate_unit data bitv pivot dir =
-  let unit_cells = create_bitv data in
+let rotate_unit data unit pivot dir =
   let ik = ref valid in
-  Bitv.iteri_true (fun bit ->
-      let newcell = Cell.(pivot + rotate dir (cell_of_bit data bit-pivot)) in
+  let unit_cells = Array.map (fun cell ->
+      let newcell = Cell.(pivot + rotate dir (cell-pivot)) in
       let ik' = check_cell data newcell in
       ik := !ik lor ik';
-      if ik' = valid then
-        Bitv.set unit_cells (bit_of_cell data newcell) true)
-    bitv;
+      newcell)
+    unit
+  in
   !ik, unit_cells
 
 let rotate data dir conf =
@@ -232,7 +247,7 @@ let rotate data dir conf =
   let ik = ref is_valid in
   let conf = { conf with unit_cells; commands = Turn dir::conf.commands }
   in
-  if unit_overlap conf then ik := !ik lor invalid_overlap;
+  if unit_overlap data conf then ik := !ik lor invalid_overlap;
   if !ik = valid then conf
   else raise (Invalid_conf !ik)
 
@@ -265,15 +280,15 @@ let spawn_unit data conf act =
   if conf.unit_no = data.input.sourceLength then
     raise (End (conf.score, List.rev conf.commands))
   else
-  if unit_overlap conf
+  if unit_overlap data conf
   then raise (End (conf.score, List.rev conf.commands))
   else conf
 
 let lock data conf act =
-  let size = Bitv.pop conf.unit_cells in
-  let conf = ref {
-      conf with full_cells = Bitv.bw_or conf.full_cells conf.unit_cells }
-  in
+  let size = Array.length  conf.unit_cells in
+  let full_cells = Bitv.copy conf.full_cells in
+  Array.iter (fun cell -> Bitv.set full_cells (bit_of_cell data cell) true) conf.unit_cells;
+  let conf = ref {conf with full_cells = full_cells}  in
   let ls = ref 0 in
   for r = 0 to  height data -1 do
     let rec is_full c =
@@ -307,8 +322,8 @@ let lock data conf act =
 let init pb ~seed_id =
   let conf =
     { full_cells = Bitv.create 0 false;
-      unit_cells = Bitv.create 0 false;
-      unit_pivot = (0, 0);
+      unit_cells = [||];
+      unit_pivot = Cell.make (0, 0);
       rng_state = Int32.of_int (List.nth pb.sourceSeeds seed_id);
       unit_no = -1;
       unit_id = -1;
