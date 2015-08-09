@@ -15,15 +15,13 @@ let find_reachable_states_mark =
   ref 0
 
 let clear_old_elements () =
-  let old = Rules.HashConfig.length find_reachable_states_mem in
   let q = Queue.create () in
   Rules.HashConfig.iter (fun config _ ->
       if config.Rules.mark < !find_reachable_states_mark
       then Queue.add config q;
     ) find_reachable_states_mem;
-  let n = Queue.length q in
-  Queue.iter (Rules.HashConfig.remove find_reachable_states_mem) q ;
-  Printf.printf "old %i remove %i\n%!" old n
+  Queue.iter (Rules.HashConfig.remove find_reachable_states_mem) q
+
 
 let find_reachable_states data init =
   try
