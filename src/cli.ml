@@ -44,6 +44,7 @@ let interactive filename options tag prefix : unit =
   let data,config = Rules.init problem seed in
   let score, commands = Simulator.interactive ~prefix data config in
   let solution = Oracle.empower commands in
+  let seed = List.nth problem.Formats_j.sourceSeeds seed in
   let output = make_output problem seed solution tag in
   let submit = n = 1 && options.submit in
   Submit.main ~score ~submit ~version:"interactive" problem [output]
