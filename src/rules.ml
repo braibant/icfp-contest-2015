@@ -137,6 +137,12 @@ struct
     Hashtbl.hash (Bitv.hash config.full_cells,
                   Bitv.hash config.unit_cells,
                   config.unit_pivot, config.unit_no)
+
+  let hash config =
+    Hashtbl.hash (Bitv.hash config.full_cells,
+                  Bitv.hash config.unit_cells,
+                  config.unit_pivot, config.unit_no)
+
 end
 module HashConfig = Hashtbl.Make(HashableConfig)
 

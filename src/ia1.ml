@@ -32,12 +32,23 @@ module HashablePiece = struct
   let hash (av,(ax,ay)) =
     (Bitv.hash av lsl 32 + ax  lsl 16 + ay) land max_int
 end
-
 module HashPiece = Hashtbl.Make(HashablePiece)
+
+module HashableConfigPiece = struct
+  type t = Rules.config
+
+  let equal a b =
+    Bitv.equal a.full_cells b.full_cells
+    (* let (ax,ay) = a.unit_pivot in *)
+    (* let (bx,by) = b.unit_pivot in *)
+    (* ax = bx && ay = by && Bitv.equal a.unit_cells b.unit_cells *)
+  let hash a =  Bitv.hash a.full_cells
+end
+module HashConfigPiece= Hashtbl.Make(HashableConfigPiece);;
 
 let seen = HashPiece.create 17
 let todo = Queue.create ()
-let next = Rules.HashConfig.create 17
+let next = HashConfigPiece.create 17
 let best_ends = ref (-1, [])
 let lock_action = ref None
 let insert_action data conf path act =
@@ -61,7 +72,7 @@ let find_reachable_states data init =
     HashPiece.clear seen;
     Queue.clear todo;
     Queue.push (init, []) todo;
-    Rules.HashConfig.clear next;
+    HashConfigPiece.clear next;
     best_ends := (-1, []);
     while not (Queue.is_empty todo) do
       let (conf, path) = Queue.pop todo in
@@ -73,23 +84,23 @@ let find_reachable_states data init =
           lock_action := None;
           insert_action data conf path (Move E);
           insert_action data conf path (Move W);
-          insert_action data conf path (Move SE);
           insert_action data conf path (Move SW);
+          insert_action data conf path (Move SE);
           insert_action data conf path (Turn CW);
           insert_action data conf path (Turn CCW);
           begin match !lock_action with
             | None -> ()
             | Some act ->
+              let path = act :: path in
               try
-                Rules.HashConfig.replace next (play_action data conf act)
-                  (List.rev (act::path))
+                HashConfigPiece.replace next (play_action data conf act) path
               with Rules.End (score, _path) ->
                 if score > fst !best_ends then
-                  best_ends := (score, List.rev (act::path))
+                  best_ends := (score, path)
           end
         end
     done;
-    let next = Rules.HashConfig.fold (fun conf path acc -> (Cont conf,path)::acc) next [] in
+    let next = HashConfigPiece.fold (fun conf path acc -> (Cont conf,path)::acc) next [] in
     let next =
       if fst !best_ends >= 0 then (End (fst !best_ends), snd !best_ends)::next else next
     in
@@ -141,7 +152,7 @@ let rec play data conf =
   in
   HashConfig.clear best_heuristic_score_mem;
   HashConfig.clear find_reachable_states_mem;
-  List.fold_left (play_action data) conf path
+  List.fold_left (play_action data) conf (List.rev path)
 
 
 (* compute the best outcome in the given set *)
@@ -169,20 +180,19 @@ let increase_depth data (l: t) : t =
 
 (* given a list of (full_conf, action list), finds the n best
    ones.  *)
-let best_candidates score ~keeping l =
-  let module T =
+module T =
   struct
     type t = int * full_conf * Rules.action list
     let compare (a,_,_) (b,_,_) =
       Pervasives.compare (a: int)  b
   end
-  in
-  let module Q = Binary_heap.Make(T) in
-  let add q conf path =
+module Q = Binary_heap.Make(T)
+let best_candidates score ~keeping l =
+  let q = Q.create 1000 in
+  let add (conf,path) =
     Q.add q (score conf, conf, path)
   in
-  let q = Q.create 1000 in
-  List.iter (fun (conf, path) -> add q conf path) l;
+  List.iter (add) l;
   Q.pop_n q keeping
   |> List.map (fun (_,conf,path) -> conf, path)
 
@@ -222,7 +232,7 @@ let breadth data next ~depth ~keeping =
       pick_best data next
     | depth ->
       let depth = depth - 1 in
-      Printf.printf "Size %i (keeping %i)\n%!" (List.length next) keeping;
+      (* Printf.printf "Size %i (keeping %i)\n%!" (List.length next) keeping; *)
       let next = best_candidates (heuristic_score data) ~keeping:(keeping + 2*depth) next in
       let next = increase_depth data next in
       let next = dedup next in
@@ -236,4 +246,4 @@ let rec play data conf =
   (* HashConfig.clear find_reachable_states_mem; *)
   clear_old_elements ();
   incr find_reachable_states_mark;
-  List.fold_left (play_action data) conf path
+  List.fold_left (play_action data) conf (List.rev path)
