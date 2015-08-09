@@ -1,12 +1,12 @@
 open Rules
 
 let tokens = function
-  | Move W   -> [ 'p' ;'\'';'!' ;'.' ;'0' ;'3' ]
-  | Move E   -> [ 'b' ;'c' ;'e' ;'f' ;'y' ;'2' ]
-  | Move SW  -> [ 'a' ;'g' ;'h' ;'i' ;'j' ;'4' ]
-  | Move SE  -> [ 'l' ;'m' ;'n' ;'o' ;' ' ;'5' ]
-  | Turn CW  -> [ 'd' ;'q' ;'r' ;'v' ;'z' ;'1' ]
-  | Turn CCW -> [ 'k' ;'s' ;'t' ;'u' ;'w' ;'x' ]
+  |  W   -> [ 'p' ;'\'';'!' ;'.' ;'0' ;'3' ]
+  |  E   -> [ 'b' ;'c' ;'e' ;'f' ;'y' ;'2' ]
+  |  SW  -> [ 'a' ;'g' ;'h' ;'i' ;'j' ;'4' ]
+  |  SE  -> [ 'l' ;'m' ;'n' ;'o' ;' ' ;'5' ]
+  |  CW  -> [ 'd' ;'q' ;'r' ;'v' ;'z' ;'1' ]
+  |  CCW -> [ 'k' ;'s' ;'t' ;'u' ;'w' ;'x' ]
 
 let find_reaching_states data dst =
   let seen = HashConfig.create 17 in
@@ -22,18 +22,18 @@ let find_reaching_states data dst =
           try
             let node =
               match act with
-              | Turn dir -> rotate_back data dir conf
-              | Move dir -> move_back data dir conf
+              | (CW | CCW) as dir -> rotate_back data dir conf
+              |  dir -> move_back data dir conf
             in
             Queue.push node todo
           with Invalid_conf _ -> ()
         in
-        insert_action (Move E);
-        insert_action (Move W);
-        insert_action (Move SE);
-        insert_action (Move SW);
-        insert_action (Turn CW);
-        insert_action (Turn CCW)
+        insert_action (E);
+        insert_action (W);
+        insert_action (SE);
+        insert_action (SW);
+        insert_action (CW);
+        insert_action (CCW)
       end
   done;
   seen
@@ -51,18 +51,18 @@ let is_reachable data src dst forbidden =
           try
             let conf =
               match act with
-              | Turn dir -> rotate data dir conf
-              | Move dir -> move data dir conf
+              | (CW | CCW) as dir -> rotate data dir conf
+              | dir  -> move data dir conf
             in
             aux false conf
           with Invalid_conf _ -> false
         in
-        try_act (Move E) ||
-        try_act (Move W) ||
-        try_act (Move SE) ||
-        try_act (Move SW) ||
-        try_act (Turn CW) ||
-        try_act (Turn CCW)
+        try_act ( E) ||
+        try_act ( W) ||
+        try_act ( SE) ||
+        try_act ( SW) ||
+        try_act ( CW) ||
+        try_act ( CCW)
       end
   in
   aux true src
@@ -96,8 +96,8 @@ let rec find_powerpath data conf dst reaching forbidden_conf bonus_pwph pwph sim
           | act::qact ->
             match
               match act with
-              | Move dir -> move data dir conf
-              | Turn dir -> rotate data dir conf
+              | (E | W | SE | SW) as dir -> move data dir conf
+              | dir -> rotate data dir conf
             with
             | exception (Invalid_conf _ as e) ->
               if qact = [] && HashableConfig.equal conf dst then None
@@ -169,8 +169,8 @@ let rec find_powerpath_game data src acts acts_accu bonus_pwph pwph simple_acts 
       | t::q ->
         match
           match t with
-          | Move dir -> move data dir conf
-          | Turn dir -> rotate data dir conf
+          | (E | W |SW |SE ) as dir -> move data dir conf
+          | dir -> rotate data dir conf
         with
         | exception (Invalid_conf _) -> conf, t::q
         | conf -> aux conf q
@@ -189,8 +189,8 @@ let rec find_powerpath_game data src acts acts_accu bonus_pwph pwph simple_acts 
     assert (HashableConfig.equal conf next);
     begin
       try match action_of_char (actsstr.[String.length actsstr-1]) with
-      | Some (Move dir) -> ignore (move data dir next); assert false
-      | Some (Turn dir) -> ignore (rotate data dir next); assert false
+      | Some ((E | W | SW | SE) as dir) -> ignore (move data dir next); assert false
+      | Some (dir) -> ignore (rotate data dir next); assert false
       | None -> assert false
       with Invalid_conf _ -> ()
     end;
@@ -238,7 +238,7 @@ let empower_power actions data conf =
       ]
   in
   let simple_act =
-    [Move W,"p"; Move E,"b"; Turn CW,"d"; Turn CCW,"k"; Move SW,"a"; Move SE,"l"]
+    [W,"p"; E,"b"; CW,"d"; CCW,"k"; SW,"a"; SE,"l"]
   in
   find_powerpath_game data conf actions []
     pw [] simple_act

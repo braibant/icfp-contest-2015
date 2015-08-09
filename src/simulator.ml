@@ -47,12 +47,12 @@ let interactive ~prefix data config  =
       | None -> ()
       | Some act -> state := Rules.play_action data !state act
       end
-    | 'j' -> state := Rules.play_action  data !state Rules.(Move W)
-    | 'l' -> state := Rules.play_action  data !state Rules.(Move E)
-    | 'i' -> state := Rules.play_action  data !state Rules.(Turn CW)
-    | 'k' -> state := Rules.play_action  data !state Rules.(Turn CCW)
-    | 'u' -> state := Rules.play_action  data !state Rules.(Move SW)
-    | 'o' -> state := Rules.play_action  data !state Rules.(Move SE)
+    | 'j' -> state := Rules.play_action  data !state Rules.( W)
+    | 'l' -> state := Rules.play_action  data !state Rules.( E)
+    | 'i' -> state := Rules.play_action  data !state Rules.( CW)
+    | 'k' -> state := Rules.play_action  data !state Rules.( CCW)
+    | 'u' -> state := Rules.play_action  data !state Rules.( SW)
+    | 'o' -> state := Rules.play_action  data !state Rules.( SE)
     | 'a' -> state := Ia1.play  data !state
     | 'q' -> raise (Rules.End (!state.Rules.score, List.rev (!state.Rules.commands)))
     | _ -> ()

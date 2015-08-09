@@ -1,10 +1,9 @@
 open Formats_t
 
-type move_dir = E | W | SE | SW
-type turn_dir = CW | CCW
+(* type move_dir = E | W | SE | SW *)
+(* type turn_dir = CW | CCW *)
 type action =
-| Turn of turn_dir
-| Move of move_dir
+  | E | W | SE | SW | CW | CCW
 
 (* North-west tile is at coordinate 0,0.
    Then, going South-West increments by 1,0
@@ -19,8 +18,8 @@ sig
   val ( + ) : t -> t -> t
   val ( - ) : t -> t -> t
   val ( ~- ) : t -> t
-  val rotate : turn_dir -> t -> t
-  val delta_of_move : move_dir -> t
+  val rotate : action -> t -> t
+  val delta_of_move : action -> t
 end
 =
 struct
@@ -46,6 +45,7 @@ struct
     match dir with
     | CW -> Pervasives.(se+sw, -sw)
     | CCW -> Pervasives.(-se, sw+se)
+    | _ -> assert false
 
   let delta_of_move dir =
     match dir with
@@ -53,6 +53,7 @@ struct
     | W -> (+1, -1)
     | SE -> (0, +1)
     | SW -> (+1, 0)
+    | _ -> assert false
 end
 
 (* TODO : loops *)
@@ -224,7 +225,7 @@ let move data dir conf =
     { conf with
       unit_cells;
       unit_pivot = Cell.(delta + conf.unit_pivot);
-      commands = Move dir::conf.commands }
+      commands = dir::conf.commands }
   in
   if unit_overlap data conf then ik := !ik lor invalid_overlap;
   if !ik = valid then conf
@@ -265,7 +266,7 @@ let rotate_unit data unit pivot dir =
 let rotate data dir conf =
   let is_valid, unit_cells = rotate_unit data conf.unit_cells conf.unit_pivot dir in
   let ik = ref is_valid in
-  let conf = { conf with unit_cells; commands = Turn dir::conf.commands }
+  let conf = { conf with unit_cells; commands = dir::conf.commands }
   in
   if unit_overlap data conf then ik := !ik lor invalid_overlap;
   if !ik = valid then conf
@@ -280,6 +281,7 @@ let rotate_back data dir conf =
   let conf = match dir with
     | CW -> rotate data CCW conf
     | CCW -> rotate data CW conf
+    | _ -> assert false
   in
   { conf with commands = [] }
 
@@ -362,23 +364,23 @@ let init pb ~seed_id =
   data, spawn_unit data conf None
 
 let action_of_char = function
-  | 'p' | '\''| '!' | '.' | '0' | '3' -> Some (Move W)
-  | 'b' | 'c' | 'e' | 'f' | 'y' | '2' -> Some (Move E)
-  | 'a' | 'g' | 'h' | 'i' | 'j' | '4' -> Some (Move SW)
-  | 'l' | 'm' | 'n' | 'o' | ' ' | '5' -> Some (Move SE)
-  | 'd' | 'q' | 'r' | 'v' | 'z' | '1' -> Some (Turn CW)
-  | 'k' | 's' | 't' | 'u' | 'w' | 'x' -> Some (Turn CCW)
+  | 'p' | '\''| '!' | '.' | '0' | '3' -> Some ( W)
+  | 'b' | 'c' | 'e' | 'f' | 'y' | '2' -> Some ( E)
+  | 'a' | 'g' | 'h' | 'i' | 'j' | '4' -> Some ( SW)
+  | 'l' | 'm' | 'n' | 'o' | ' ' | '5' -> Some ( SE)
+  | 'd' | 'q' | 'r' | 'v' | 'z' | '1' -> Some ( CW)
+  | 'k' | 's' | 't' | 'u' | 'w' | 'x' -> Some ( CCW)
   | '\t'| '\n'| '\r' -> None
   | _ -> assert false
 
 let play_action data conf act =
   match act with
-  | Move dir ->
+  | (E | W | SE | SW) as dir ->
     begin
       try move data dir conf
       with Invalid_conf _ -> lock data conf (Some act)
     end
-  | Turn dir ->
+  | (CW | CCW) as dir ->
     begin
       try rotate data dir conf
       with Invalid_conf _ -> lock data conf (Some act)

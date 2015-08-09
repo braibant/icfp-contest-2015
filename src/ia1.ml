@@ -55,8 +55,8 @@ let insert_action data conf path act =
   try
     let node =
       match act with
-      | Turn dir -> (rotate data dir conf, act::path)
-      | Move dir -> (move data dir conf, act::path)
+      | (CW | CCW) as dir -> (rotate data dir conf, act::path)
+      | dir -> (move data dir conf, act::path)
     in
     Queue.push node todo
   with Invalid_conf ik ->
@@ -82,12 +82,12 @@ let find_reachable_states data init =
         begin
           HashPiece.add seen piece ();
           lock_action := None;
-          insert_action data conf path (Move E);
-          insert_action data conf path (Move W);
-          insert_action data conf path (Move SW);
-          insert_action data conf path (Move SE);
-          insert_action data conf path (Turn CW);
-          insert_action data conf path (Turn CCW);
+          insert_action data conf path ( E);
+          insert_action data conf path ( W);
+          insert_action data conf path ( SW);
+          insert_action data conf path ( SE);
+          insert_action data conf path ( CW);
+          insert_action data conf path ( CCW);
           begin match !lock_action with
             | None -> ()
             | Some act ->
