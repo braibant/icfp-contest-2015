@@ -210,7 +210,7 @@ let breadth data next ~depth ~keeping =
       pick_best data next
     | depth ->
       let depth = depth - 1 in
-      Printf.printf "Size %i (keeping %i)\n%!" (List.length next) keeping;
+      (* Printf.printf "Size %i (keeping %i)\n%!" (List.length next) keeping; *)
       let next = best_candidates (heuristic_score data) ~keeping:(keeping + 2*depth) next in
       let next = increase_depth data next in
       let next = dedup next in

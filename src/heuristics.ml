@@ -64,6 +64,7 @@ let meta weights data config : int =
 
 (* random vector *)
 let init () =
+  assert false;                         (* Make sure everything is deterministic *)
   Array.map (fun _ -> Random.float 10. -. 5.) signals
 
 let hand_tuned =

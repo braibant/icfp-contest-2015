@@ -82,8 +82,8 @@ exception Found of
       (Rules.action list * string * int) list
 
 (* Return *reversed* list of strings. *)
-let rec find_powerpath data conf dst reaching forbidden_conf bonus_pwph pwph simple_acts =
-  if not (HashConfig.mem reaching conf) then None
+let rec find_powerpath data conf dst reaching forbidden_conf cnt bonus_pwph pwph simple_acts =
+  if !cnt > 100000 || not (HashConfig.mem reaching conf) then None
   else
     begin
       let rec rollback_forbidden_conf = ref rollback_forbidden_conf_init
@@ -110,6 +110,7 @@ let rec find_powerpath data conf dst reaching forbidden_conf bonus_pwph pwph sim
                   rollback_forbidden_conf :=
                     (let rb = !rollback_forbidden_conf in
                      fun () -> HashConfig.remove forbidden_conf conf; rb ());
+                  incr cnt;
                   play_acts conf qact
                 end;
         in
@@ -124,7 +125,7 @@ let rec find_powerpath data conf dst reaching forbidden_conf bonus_pwph pwph sim
           (* let conf' = play_str actsstr data conf0 in *)
           (* assert (HashableConfig.equal conf' conf); *)
           let res =
-            find_powerpath data conf dst reaching forbidden_conf
+            find_powerpath data conf dst reaching forbidden_conf cnt
               bonus_pwph pwph simple_acts
           in
           !rollback_forbidden_conf ();
@@ -163,8 +164,8 @@ let rec find_powerpath data conf dst reaching forbidden_conf bonus_pwph pwph sim
 let rec find_powerpath_game data src acts acts_accu bonus_pwph pwph simple_acts =
   if (src.unit_no+1) mod 10 = 0 then
     Printf.printf "Oracle : %d\n%!" (src.unit_no+1);
-  let next, acts_next =
-    let rec aux conf = function
+  let next, acts_next, cur_acts =
+    let rec aux conf consumed_acts = function
       | [] -> assert false
       | t::q ->
         match
@@ -172,36 +173,44 @@ let rec find_powerpath_game data src acts acts_accu bonus_pwph pwph simple_acts 
           | Move dir -> move data dir conf
           | Turn dir -> rotate data dir conf
         with
-        | exception (Invalid_conf _) -> conf, t::q
-        | conf -> aux conf q
+        | exception (Invalid_conf _) -> conf, t::q, t::consumed_acts
+        | conf -> aux conf (t::consumed_acts) q
     in
-    aux src acts
+    aux src [] acts
   in
+  let cur_acts = List.rev cur_acts in
   let forbidden_conf = HashConfig.create 17 in
   HashConfig.add forbidden_conf src ();
-  match
-    find_powerpath data src next (find_reaching_states data next) forbidden_conf
-      bonus_pwph pwph simple_acts
-  with None -> assert false
-  | Some (acts, bonus_pwph, pwph) ->
-    let actsstr = String.concat "" acts in
-    let conf = play_str (drop_last actsstr) data src in
-    assert (HashableConfig.equal conf next);
-    begin
-      try match action_of_char (actsstr.[String.length actsstr-1]) with
-      | Some (Move dir) -> ignore (move data dir next); assert false
-      | Some (Turn dir) -> ignore (rotate data dir next); assert false
-      | None -> assert false
-      with Invalid_conf _ -> ()
-    end;
-    let acts_accu = List.rev_append acts acts_accu in
-    match acts_next with
-    | [] -> assert false
-    | t::acts_next ->
-      match lock data next (Some t) with
-      | next ->
-        find_powerpath_game data next acts_next acts_accu bonus_pwph pwph simple_acts
-      | exception (End _) -> String.concat "" (List.rev acts_accu)
+  let cnt = ref 0 in
+  let acts, bonus_pwph, pwph =
+    match
+      find_powerpath data src next (find_reaching_states data next) forbidden_conf cnt
+        bonus_pwph pwph simple_acts
+    with
+    | None ->
+      let a = Array.of_list cur_acts in
+      ([String.init (Array.length a) (fun i -> List.hd (tokens a.(i)))],
+       bonus_pwph, pwph)
+    | Some (acts, bonus_pwph, pwph) -> (acts, bonus_pwph, pwph)
+  in
+  (* let actsstr = String.concat "" acts in *)
+  (* let conf = play_str (drop_last actsstr) data src in *)
+  (* assert (HashableConfig.equal conf next); *)
+  (* begin *)
+  (*   try match action_of_char (actsstr.[String.length actsstr-1]) with *)
+  (*   | Some (Move dir) -> ignore (move data dir next); assert false *)
+  (*   | Some (Turn dir) -> ignore (rotate data dir next); assert false *)
+  (*   | None -> assert false *)
+  (*   with Invalid_conf _ -> () *)
+  (* end; *)
+  let acts_accu = List.rev_append acts acts_accu in
+  match acts_next with
+  | [] -> assert false
+  | t::acts_next ->
+    match lock data next (Some t) with
+    | next ->
+      find_powerpath_game data next acts_next acts_accu bonus_pwph pwph simple_acts
+    | exception (End _) -> String.concat "" (List.rev acts_accu)
 
 let empower_prefix actions prefix =
   let n = List.length actions in
@@ -210,7 +219,7 @@ let empower_prefix actions prefix =
     let tok = tokens a.(i) in
     if i < String.length prefix && List.mem prefix.[i] tok
     then prefix.[i]
-    else List.hd (tokens a.(i)))
+    else List.hd tok)
 
 let gen_pw pw prio =
   let l = ref [] in
