@@ -41,9 +41,12 @@ let interactive filename options tag prefix : unit =
     end
     else 0
   in
-  let data,config = Rules.init problem seed in
-  let score, commands = Simulator.interactive ~prefix data config in
-  let solution = Oracle.empower commands prefix in
+  let data,init = Rules.init problem seed in
+  let score, commands = Simulator.interactive ~prefix data init in
+  let solution =
+    if String.length prefix = 0 then Oracle.empower_power commands data init
+    else Oracle.empower_prefix commands prefix
+  in
   let seed = List.nth problem.Formats_j.sourceSeeds seed in
   let output = make_output problem seed solution tag in
   let submit = n = 1 && options.submit in
@@ -64,8 +67,8 @@ let ai_f filename options weights tag =
       seed_id
       (List.length problem.Formats_t.sourceSeeds -1 )
       problem.Formats_t.sourceLength;
-    let data, config = Rules.init problem seed_id in
-    let state = ref config in
+    let data, init = Rules.init problem seed_id in
+    let state = ref init in
     let n = ref 0 in
     try
       while true do
@@ -77,7 +80,7 @@ let ai_f filename options weights tag =
       assert false
     with Rules.End (score,commands) ->
       Printf.printf "Final score : %d\n" score;
-      let solution = Oracle.empower commands "" in
+      let solution = Oracle.empower_power commands data init in
       let output = make_output problem seed solution tag in
       output, score
   in

@@ -343,16 +343,13 @@ let play_action data conf act =
       with Invalid_conf _ -> lock data conf (Some act)
     end
 
-let play_game commands pb seed_id =
-  let data, conf = (init pb ~seed_id) in
-  let conf = ref conf in
-  try
-    String.iter (fun c ->
-      match action_of_char c with
+let play_str commands data config =
+  let conf = ref config in
+  String.iter (fun c ->
+    match action_of_char c with
       | None -> ()
       | Some act -> conf := play_action data !conf act) commands;
-    assert false
-  with End (score, _) -> score
+  !conf
 
 
 let check_game commands pb seed_id =

@@ -24,8 +24,8 @@ let single filename options heuristic tag =
       seed_id
       (List.length problem.Formats_t.sourceSeeds -1 )
       problem.Formats_t.sourceLength;
-    let data, config = Rules.init problem seed_id in
-    let state = ref config in
+    let data, init = Rules.init problem seed_id in
+    let state = ref init in
     let n = ref 0 in
     try
       while true do
@@ -37,7 +37,7 @@ let single filename options heuristic tag =
       assert false
     with Rules.End (score,commands) ->
       Printf.printf "Final score : %d\n" score;
-      let solution = Oracle.empower commands "" in
+      let solution = Oracle.empower_power commands data init in
       let output = make_output problem seed solution tag in
       output, score
   in

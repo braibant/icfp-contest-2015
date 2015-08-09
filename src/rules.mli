@@ -65,6 +65,7 @@ exception End of int * action list
 val move : data -> move_dir -> config -> config
 val rotate : data -> turn_dir -> config -> config
 val check_cell : data -> Cell.t -> int
+val lock : data -> config -> action option -> config
 
 (** These function clear the commands field. *)
 val move_back : data -> move_dir -> config -> config
@@ -76,7 +77,7 @@ val rotate_back : data -> turn_dir -> config -> config
 val play_action : data -> config -> action -> config
 
 (** Play a complete game  *)
-val play_game : Formats_t.commands -> Formats_t.input -> int -> int
+val play_str : Formats_t.commands -> data -> config -> config
 
 (** Check a complete game *)
 val check_game : Formats_t.commands -> Formats_t.input -> int -> bool
