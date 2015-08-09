@@ -24,6 +24,22 @@ let clear_old_elements () =
     ) find_reachable_states_mem;
   Queue.iter (Rules.HashConfig.remove find_reachable_states_mem) q
 
+let seen = Hashtbl.create 17
+let todo = Queue.create ()
+let next = Rules.HashConfig.create 17
+let best_ends = ref (-1, [])
+let lock_action = ref None
+let insert_action data conf path act =
+  try
+    let node =
+      match act with
+      | Turn dir -> (rotate data dir conf, act::path)
+      | Move dir -> (move data dir conf, act::path)
+    in
+    Queue.push node todo
+  with Invalid_conf ik ->
+    if ik land (invalid_overlap lor invalid_bottom) <> 0 then
+      lock_action := Some act
 
 let find_reachable_states data init =
   try
@@ -31,36 +47,24 @@ let find_reachable_states data init =
     init.Rules.mark <- !find_reachable_states_mark;
     r
   with Not_found ->
-    let seen = Rules.HashConfig.create 17 in
-    let todo = Queue.create () in
+    Hashtbl.clear seen;
+    Queue.clear todo;
     Queue.push (init, []) todo;
-    let next = Rules.HashConfig.create 17 in
-    let best_ends = ref (-1, []) in
+    Rules.HashConfig.clear next;
+    best_ends := (-1, []);
     while not (Queue.is_empty todo) do
       let (conf, path) = Queue.pop todo in
-      if Rules.HashConfig.mem seen conf then ()
+      if Hashtbl.mem seen (conf.unit_pivot, conf.unit_cells) then ()
       else
         begin
-          Rules.HashConfig.add seen conf ();
-          let lock_action = ref None in
-          let insert_action act =
-            try
-              let node =
-                match act with
-                | Turn dir -> (rotate data dir conf, act::path)
-                | Move dir -> (move data dir conf, act::path)
-              in
-              Queue.push node todo
-            with Invalid_conf ik ->
-              if ik land (invalid_overlap lor invalid_bottom) <> 0 then
-                lock_action := Some act
-          in
-          insert_action (Move E);
-          insert_action (Move W);
-          insert_action (Move SE);
-          insert_action (Move SW);
-          insert_action (Turn CW);
-          insert_action (Turn CCW);
+          Hashtbl.add seen (conf.unit_pivot, conf.unit_cells) ();
+          lock_action := None;
+          insert_action data conf path (Move E);
+          insert_action data conf path (Move W);
+          insert_action data conf path (Move SE);
+          insert_action data conf path (Move SW);
+          insert_action data conf path (Turn CW);
+          insert_action data conf path (Turn CCW);
           begin match !lock_action with
             | None -> ()
             | Some act ->
