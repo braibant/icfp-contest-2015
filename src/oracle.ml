@@ -38,6 +38,35 @@ let find_reaching_states data dst =
   done;
   seen
 
+let is_reachable data src dst forbidden =
+  let seen = HashConfig.create 17 in
+  let rec aux fst conf =
+    if HashableConfig.equal conf dst then true
+    else if HashConfig.mem seen conf || (HashConfig.mem forbidden conf && not fst)
+    then false
+    else
+      begin
+        HashConfig.add seen conf ();
+        let try_act act =
+          try
+            let conf =
+              match act with
+              | Turn dir -> rotate data dir conf
+              | Move dir -> move data dir conf
+            in
+            aux false conf
+          with Invalid_conf _ -> false
+        in
+        try_act (Move E) ||
+        try_act (Move W) ||
+        try_act (Move SE) ||
+        try_act (Move SW) ||
+        try_act (Turn CW) ||
+        try_act (Turn CCW)
+      end
+  in
+  aux true src
+
 let rec sort_by_prio l = List.sort (fun (_, _, a) (_, _, b) -> b-a) l
 
 let shuffle d =
@@ -84,7 +113,7 @@ let rec find_powerpath data conf dst reaching forbidden_conf bonus_pwph pwph sim
                   play_acts conf qact
                 end;
         in
-        (* let conf0 = conf in *)
+        let conf0 = conf in
         match play_acts conf acts with
         | None ->
           !rollback_forbidden_conf ();
@@ -100,7 +129,9 @@ let rec find_powerpath data conf dst reaching forbidden_conf bonus_pwph pwph sim
           in
           !rollback_forbidden_conf ();
           begin match res with
-          | None -> ()
+          | None ->
+            if not (is_reachable data conf0 dst forbidden_conf) then
+              raise Not_found
           | Some (acts, bonus_pwph, pwph) ->
             (* let s = String.concat "" (actsstr::acts) in *)
             (* let conf = play_str (drop_last s) data conf0 in *)
@@ -126,9 +157,12 @@ let rec find_powerpath data conf dst reaching forbidden_conf bonus_pwph pwph sim
           (shuffle simple_acts);
         None
       with Found (acts, bonus_pwph, pwph) -> Some (acts, bonus_pwph, pwph)
+      | Not_found -> None
     end
 
 let rec find_powerpath_game data src acts acts_accu bonus_pwph pwph simple_acts =
+  if (src.unit_no+1) mod 10 = 0 then
+    Printf.printf "Oracle : %d\n%!" (src.unit_no+1);
   let next, acts_next =
     let rec aux conf = function
       | [] -> assert false
