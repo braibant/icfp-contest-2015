@@ -216,7 +216,7 @@ let breadth data next ~depth ~keeping =
 
 let rec play data conf =
   let next = find_reachable_states data conf in
-  let (_,path) = breadth data next !max_depth 100 in
+  let (_,path) = breadth data next !max_depth 10 in
   (* HashConfig.clear find_reachable_states_mem; *)
   clear_old_elements ();
   incr find_reachable_states_mark;
