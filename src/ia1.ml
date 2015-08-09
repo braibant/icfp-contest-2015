@@ -26,9 +26,21 @@ let clear_old_elements () =
 
 
 module HashablePiece = struct
+
+
+  let rec equal_vect (a: Cell.t array) b i n =
+    if i = n
+    then true
+    else
+      let (xa,ya) = a.(i) in
+      let (xb,yb) = b.(i) in
+      xa == xb && ya == yb && equal_vect a b (i + 1) n
+
   type t = Cell.t array * (int * int)
+
   let equal : t -> t -> bool = fun (av, (ax,ay)) (bv, (bx,by)) ->
-    ax = bx && ay = by && av = bv
+    (ax: int) = bx && (ay : int) = by && equal_vect av bv 0 (Array.length av)
+
   let hash (av,(ax,ay)) =
     (Hashtbl.hash av lsl 32 + ax  lsl 16 + ay) land max_int
 end
