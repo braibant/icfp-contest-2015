@@ -53,6 +53,8 @@ type config =  {
   score : int;
   ls_old : int;
   commands : action list ;      (* in reverse order *)
+
+  mutable mark : int;
 }
 
 type data =
@@ -306,7 +308,8 @@ let init pb ~seed_id =
       unit_id = -1;
       ls_old = 0;
       score = 0;
-      commands = []}
+      commands = [];
+      mark = 0}
   in
   let data = build_data pb in
   let conf = { conf with

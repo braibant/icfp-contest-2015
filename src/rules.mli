@@ -17,7 +17,7 @@ module Cell :
     val delta_of_move : move_dir -> t
   end
 
-type config = private {
+type config = {
   full_cells : Bitv.t;
   unit_cells : Bitv.t;
   unit_pivot : Cell.t;
@@ -27,6 +27,8 @@ type config = private {
   score : int;
   ls_old : int;
   commands : action list ;      (* in reverse order *)
+
+  mutable mark : int;
 }
 
 type data

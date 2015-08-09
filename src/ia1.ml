@@ -11,8 +11,25 @@ type full_conf =
 let find_reachable_states_mem =
   Rules.HashConfig.create 17
 
+let find_reachable_states_mark =
+  ref 0
+
+let clear_old_elements () =
+  let old = Rules.HashConfig.length find_reachable_states_mem in
+  let q = Queue.create () in
+  Rules.HashConfig.iter (fun config _ ->
+      if config.Rules.mark < !find_reachable_states_mark
+      then Queue.add config q;
+    ) find_reachable_states_mem;
+  let n = Queue.length q in
+  Queue.iter (Rules.HashConfig.remove find_reachable_states_mem) q ;
+  Printf.printf "old %i remove %i\n%!" old n
+
 let find_reachable_states data init =
-  try Rules.HashConfig.find find_reachable_states_mem init
+  try
+    let r = Rules.HashConfig.find find_reachable_states_mem init in
+    init.Rules.mark <- !find_reachable_states_mark;
+    r
   with Not_found ->
     let seen = Rules.HashConfig.create 17 in
     let todo = Queue.create () in
@@ -62,6 +79,7 @@ let find_reachable_states data init =
     in
     assert (next <> []);
     Rules.HashConfig.replace find_reachable_states_mem init next;
+    init.Rules.mark <- !find_reachable_states_mark;
     next
 
 
@@ -186,5 +204,7 @@ let breadth data next depth =
 let rec play data conf =
   let next = find_reachable_states data conf in
   let (_,path) = breadth data next !max_depth in
-  HashConfig.clear find_reachable_states_mem;
+  (* HashConfig.clear find_reachable_states_mem; *)
+  clear_old_elements ();
+  incr find_reachable_states_mark;
   List.fold_left (play_action data) conf path
