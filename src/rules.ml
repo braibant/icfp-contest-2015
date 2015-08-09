@@ -186,6 +186,27 @@ let move data dir conf =
   if !ik = valid then conf
   else raise (Invalid_conf !ik)
 
+let move_back data dir conf =
+  let delta = Cell.delta_of_move dir in
+  let unit_cells = create_bitv data in
+  let ik = ref valid in
+  Bitv.iteri_true (fun bit ->
+    let newcell = Cell.(cell_of_bit data bit - delta) in
+    let ik' = check_cell data newcell in
+    ik := !ik lor ik';
+    if ik' = valid then
+      Bitv.set unit_cells (bit_of_cell data newcell) true)
+    conf.unit_cells;
+  let conf =
+    { conf with
+      unit_cells;
+      unit_pivot = Cell.(conf.unit_pivot - delta);
+      commands = [] }
+  in
+  if unit_overlap conf then ik := !ik lor invalid_overlap;
+  if !ik = valid then conf
+  else raise (Invalid_conf !ik)
+
 let rotate_unit data bitv pivot dir =
   let unit_cells = create_bitv data in
   let ik = ref valid in
@@ -197,7 +218,6 @@ let rotate_unit data bitv pivot dir =
         Bitv.set unit_cells (bit_of_cell data newcell) true)
     bitv;
   !ik, unit_cells
-
 
 let rotate data dir conf =
   let is_valid, unit_cells = rotate_unit data conf.unit_cells conf.unit_pivot dir in
@@ -212,6 +232,13 @@ let rotate data dir conf =
 let rotate_unit data bitv pivot dir =
   let is_valid, cells = rotate_unit data  bitv pivot dir in
   cells
+
+let rotate_back data dir conf =
+  let conf = match dir with
+    | CW -> rotate data CCW conf
+    | CCW -> rotate data CW conf
+  in
+  { conf with commands = [] }
 
 let spawn_unit data conf act =
   let rng = Int32.(to_int (logand (shift_right_logical conf.rng_state 16) 0x7FFFl)) in

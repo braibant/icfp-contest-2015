@@ -37,7 +37,7 @@ let single filename options heuristic tag =
       assert false
     with Rules.End (score,commands) ->
       Printf.printf "Final score : %d\n" score;
-      let solution = Oracle.empower commands in
+      let solution = Oracle.empower commands "" in
       let output = make_output problem seed solution tag in
       output, score
   in

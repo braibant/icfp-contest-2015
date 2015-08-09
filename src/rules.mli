@@ -64,6 +64,10 @@ val move : data -> move_dir -> config -> config
 val rotate : data -> turn_dir -> config -> config
 val check_cell : data -> Cell.t -> int
 
+(** These function clear the commands field. *)
+val move_back : data -> move_dir -> config -> config
+val rotate_back : data -> turn_dir -> config -> config
+
 (** {2 Main functions }  *)
 
 (** Play an action to update a config *)

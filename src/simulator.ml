@@ -21,6 +21,7 @@ let interactive ~prefix data config  =
                  +/-: resize the tiles\n \
                  v: switch to sane mode\n \
                  p: switch to power mode\n \
+                 q: end of game\n \
                  %!";
 
   let state = ref config in
@@ -53,6 +54,7 @@ let interactive ~prefix data config  =
     | 'u' -> state := Rules.play_action  data !state Rules.(Move SW)
     | 'o' -> state := Rules.play_action  data !state Rules.(Move SE)
     | 'a' -> state := Ia1.play  data !state
+    | 'q' -> raise (Rules.End (!state.Rules.score, List.rev (!state.Rules.commands)))
     | _ -> ()
   in
   String.iter
