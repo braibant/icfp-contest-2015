@@ -26,11 +26,11 @@ let clear_old_elements () =
 
 
 module HashablePiece = struct
-  type t = Bitv.t * (int * int)
+  type t = Cell.t array * (int * int)
   let equal : t -> t -> bool = fun (av, (ax,ay)) (bv, (bx,by)) ->
-    ax = bx && ay = by && Bitv.equal av bv
+    ax = bx && ay = by && av = bv
   let hash (av,(ax,ay)) =
-    (Bitv.hash av lsl 32 + ax  lsl 16 + ay) land max_int
+    (Hashtbl.hash av lsl 32 + ax  lsl 16 + ay) land max_int
 end
 module HashPiece = Hashtbl.Make(HashablePiece)
 
