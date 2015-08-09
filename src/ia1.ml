@@ -176,7 +176,7 @@ let breadth data next depth =
         let keeping = max depth 10 in
         let seen = Rules.HashConfig.create 17 in
         let best_ends = ref (-1, []) in
-        Printf.printf "Size %i (keeping %i)\n%!" (List.length next) keeping;
+        (* Printf.printf "Size %i (keeping %i)\n%!" (List.length next) keeping; *)
 
         let next = best_candidates data next keeping
                    |> increase_depth data in
