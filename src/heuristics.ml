@@ -81,7 +81,7 @@ let heuristic_bumpiness data config =
 
 let simple data config =
   (* 0 *)
-  + heuristic_base data config
+  (* + heuristic_base data config *)
   + score data config +
   + heuristic_line data config
   (* + heuristic_neighbours data config *)
