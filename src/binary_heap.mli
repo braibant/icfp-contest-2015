@@ -54,6 +54,11 @@ module Make(X: Ordered) : sig
      raises [EmptyHeap] when [h] is empty; complexity $O(log(n))$ *)
   val pop_maximum : t -> X.t
 
+  (* [pop_n h n] removes the [n] maximumm elements of [h] and returns it;
+      if there are not enough elements, only the first ones are
+      returned.  complexity $O(log(n))$ *)
+  val pop_n : t -> int ->  X.t list
+
   (* usual iterators and combinators; elements are presented in
      arbitrary order *)
   val iter : (X.t -> unit) -> t -> unit

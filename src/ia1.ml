@@ -1,5 +1,5 @@
 let version = "0.4-jh"
-let max_depth = ref 5
+let max_depth = ref 20
 
 
 open Rules
@@ -95,48 +95,6 @@ let rec best_heuristic_score data conf = function
         res
 
 
-(* compute the best outcome in the given set *)
-let pick_best data next =
-  List.fold_left (fun ((scoremax, pathmax) as acc) (conf,path) ->
-      let score = heuristic_score data conf in
-      if score <= scoremax then acc
-      else (score, path))
-    (min_int, []) next
-
-
-let rec breadth data next = function
-  | 0 -> pick_best data next
-  | depth ->
-    let module T =
-    struct
-      type t = full_conf * Rules.action list
-      let compare (a,_) (b,_) =
-        Pervasives.compare
-          (heuristic_score  data a)
-          (heuristic_score  data b)
-    end
-    in
-    let module Q = Binary_heap.Make(T) in
-    let q = Q.create 100 in
-    List.iter (fun (conf,path) ->
-        match conf with
-        | End _ -> Q.add q (conf, path)
-        | Cont conf ->
-          let next = find_reachable_states data conf in
-          List.iter (fun (conf', _) -> Q.add q (conf', path)) next
-      ) next;
-    Printf.printf "Size %i\n%!" (Q.size q);
-    let next =
-      let l = ref [] in
-      try
-        for i = 0 to 100 do
-          l := Q.pop_maximum q :: !l
-        done;
-        !l
-      with Binary_heap.Empty -> !l
-    in breadth data next (depth -1)
-
-
 
 let rec play data conf =
   let next = find_reachable_states data conf in
@@ -151,9 +109,47 @@ let rec play data conf =
   HashConfig.clear find_reachable_states_mem;
   List.fold_left (play_action data) conf path
 
+
+(* compute the best outcome in the given set *)
+let pick_best data next =
+  List.fold_left (fun ((scoremax, pathmax) as acc) (conf,path) ->
+      let score = heuristic_score data conf in
+      if score <= scoremax then acc
+      else (score, path))
+    (min_int, []) next
+
+let breadth data next depth =
+  let module T =
+  struct
+    type t = int * full_conf * Rules.action list
+    let compare (a,_,_) (b,_,_) =
+      Pervasives.compare (a: int)  b
+  end
+  in
+  let module Q = Binary_heap.Make(T) in
+  let add q conf path =
+    Q.add q (heuristic_score data conf, conf, path)
+  in
+  let rec breadth next = function
+    | 0 -> pick_best data next
+    | depth ->
+      let q = Q.create 1000 in
+      List.iter (fun (conf,path) ->
+          match conf with
+          | End _ -> add q conf path
+          | Cont conf ->
+            let next = find_reachable_states data conf in
+            List.iter (fun (conf', _) -> add q conf' path) next
+        ) next;
+      Printf.printf "Size %i\n%!" (Q.size q);
+      let next = Q.pop_n q (depth * 5 + 10) in
+      let next = List.map (fun (_,conf,path) -> conf, path) next in
+      breadth next (depth -1)
+  in
+  breadth  next depth
+
 let rec play data conf =
   let next = find_reachable_states data conf in
   let (_,path) = breadth data next !max_depth in
-  HashConfig.clear best_heuristic_score_mem;
   HashConfig.clear find_reachable_states_mem;
   List.fold_left (play_action data) conf path

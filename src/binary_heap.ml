@@ -31,6 +31,7 @@ module Make(X : Ordered) = struct
   type t = { mutable size : int; mutable data : X.t array }
 
   let size t  = t.size
+
   (* When [create n] is called, we cannot allocate the array, since there is
      no known value of type [X.t]; we'll wait for the first addition to
      do it, and we remember this situation with a negative size. *)
@@ -48,14 +49,14 @@ module Make(X : Ordered) = struct
     assert (n > 0);
     let n' = 2 * n in
     let d = h.data in
-    let d' = Array.create n' d.(0) in
+    let d' = Array.make n' d.(0) in
     Array.blit d 0 d' 0 n;
     h.data <- d'
 
   let add h x =
     (* first addition: we allocate the array *)
     if h.size < 0 then begin
-      h.data <- Array.create (- h.size) x; h.size <- 0
+      h.data <- Array.make (- h.size) x; h.size <- 0
     end;
     let n = h.size in
     (* resizing if needed *)
@@ -102,6 +103,15 @@ module Make(X : Ordered) = struct
     movedown 0
 
   let pop_maximum h = let m = maximum h in remove h; m
+
+  let pop_n h n =
+    assert (0 <= n);
+    let rec aux i acc =
+      if i = n || is_empty h
+      then List.rev acc
+      else aux (succ i) (pop_maximum h :: acc)
+    in
+    aux 0 []
 
   let iter f h =
     let d = h.data in

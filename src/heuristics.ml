@@ -8,7 +8,9 @@ let heuristic_line data config =
       let line = snd @@ Rules.coord_of_bit data bit in
       table.(line) <- table.(line) + 1
     ) config.full_cells;
-  Array.fold_left (fun acc elements -> acc + elements * elements) 0 table
+  let sc = ref 0 in
+  Array.iteri (fun i elements -> sc := !sc + elements * elements + elements * i) table;
+  !sc
 
 (* ~ cells with empty neighbours *)
 let delta = [(0, 1);(1, 0);(0, -1);(-1, 0);(1,-1);(-1,1)]
@@ -39,7 +41,7 @@ let heuristic_base data config =
   !sc
 
 let score data config =
-  config.score
+  config.score * 10_000
 
 let signals =
   [|
@@ -50,7 +52,7 @@ let signals =
   |]
 
 let simple data config =
-  heuristic_base data config + score data config + heuristic_line data config
+  (* heuristic_base data config  +  *) score data config + heuristic_line data config
 
 let meta weights data config : int =
   let acc = ref 0. in

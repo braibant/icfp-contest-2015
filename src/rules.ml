@@ -264,10 +264,10 @@ let spawn_unit data conf act =
 let lock data conf act =
   let size = Bitv.pop conf.unit_cells in
   let conf = ref {
-    conf with full_cells = Bitv.bw_or conf.full_cells conf.unit_cells }
+      conf with full_cells = Bitv.bw_or conf.full_cells conf.unit_cells }
   in
   let ls = ref 0 in
-  for r = height data -1 downto 0 do
+  for r = 0 to  height data -1 do
     let rec is_full c =
       if c < 0 then true
       else Bitv.get !conf.full_cells (bit_of_coord data (c, r)) && is_full (c-1)
@@ -277,10 +277,10 @@ let lock data conf act =
         incr ls;
         let full_cells = create_bitv data in
         Bitv.iteri_true (fun bit ->
-          let c', r' = coord_of_bit data bit in
-          if r' = r then ()
-          else if r' < r then Bitv.set full_cells (bit_of_coord data (c', r'+1)) true
-          else Bitv.set full_cells (bit_of_coord data (c', r')) true)
+            let c', r' = coord_of_bit data bit in
+            if r' = r then ()
+            else if r' < r then Bitv.set full_cells (bit_of_coord data (c', r'+1)) true
+            else Bitv.set full_cells (bit_of_coord data (c', r')) true)
           !conf.full_cells;
         conf := { !conf with full_cells }
       end
@@ -290,8 +290,8 @@ let lock data conf act =
   let lines_bonus = if conf.ls_old > 1 then ((conf.ls_old-1)*points/10) else 0 in
   let conf = {
     conf with
-      ls_old = ls;
-      score = conf.score + points + lines_bonus
+    ls_old = ls;
+    score = conf.score + points + lines_bonus
   } in
   spawn_unit data conf act
 
