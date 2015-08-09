@@ -129,7 +129,10 @@ let height data = data.height
 let coord_of_bit data bit = data.coord_of_bit.(bit)
 let bit_of_coord data (x,y) = x+y*data.width
 let cell_of_bit data bit = data.cell_of_bit.(bit)
-let bit_of_cell data cell = bit_of_coord data (Cell.to_coord cell)
+let bit_of_cell data (sw,se) =
+  let x = (se-sw) asr 1 in
+  let y = sw+se in
+  x+y*data.width
 let create_bitv data = Bitv.create (data.width*data.height) false
 let number_of_units data = Array.length data.units
 let get_unit data id = data.units.(id)
@@ -168,19 +171,27 @@ let valid = 0
 exception Invalid_conf of invalid_kind
 exception End of int *  action list
 
+
+let unit_overlap_flag = ref false
 let unit_overlap data conf =
-  let r = ref false in
+  let r = unit_overlap_flag in
+  r := false;
   let n = Bitv.length conf.full_cells in
-  Array.iter (fun cell ->
-      let bit = bit_of_cell data cell in
-      if 0 <= bit && bit < n
-      then r:= !r || Bitv.get conf.full_cells (bit_of_cell data cell);
-    ) conf.unit_cells;
+  let unit = conf.unit_cells in
+  let full = conf.full_cells in
+  for i = 0 to Array.length unit - 1 do
+    let cell = unit.(i) in
+    let bit = bit_of_cell data cell in
+    if 0 <= bit && bit < n
+    then r:= !r || Bitv.get full (bit_of_cell data cell);
+  done;
   !r
   (* not (Bitv.all_zeros (Bitv.bw_and conf.full_cells conf.unit_cells)) *)
 
 let check_cell data cell =
   let c, r = Cell.to_coord cell in
+  (* let c = (se-sw) asr 1 in *)
+  (* let r = sw+se in *)
   let k = 0 in
   let k = if c < 0 || c >= width data then k lor invalid_leftright else k in
   let k = if r < 0 then k lor invalid_up else k in
@@ -193,15 +204,22 @@ let cells_of_bitv data bitv =
     bitv;
   !l
 
+let ik = ref valid
+(* let move_cell data delta cell = *)
 let move data dir conf =
   let delta = Cell.delta_of_move dir in
-  let ik = ref valid in
-  let unit_cells = Array.map (fun cell ->
-      let newcell =       Cell.(cell + delta) in
-      let ik' = check_cell data newcell in
-      ik := !ik lor ik';
-      newcell)
-      conf.unit_cells in
+  ik := valid;
+  let old = conf.unit_cells in
+  let n = (Array.length old) in
+  let unit_cells = Array.make n (0,0) in
+  for i = 0 to  n - 1 do
+    let cell = old.(i) in
+    let newcell =       Cell.(cell + delta) in
+    let ik' = check_cell data newcell in
+    ik := !ik lor ik';
+    unit_cells.(i) <- newcell
+  done;
+  (* Array.map (move_cell data delta) conf.unit_cells in *)
   let conf =
     { conf with
       unit_cells;
@@ -212,14 +230,16 @@ let move data dir conf =
   if !ik = valid then conf
   else raise (Invalid_conf !ik)
 
+
 let move_back data dir conf =
   let delta = Cell.delta_of_move dir in
-  let ik = ref valid in
+  ik := valid;
   let unit_cells = Array.map (fun cell ->
-      let newcell =       Cell.(cell - delta) in
+      let newcell =  Cell.(cell - delta) in
       let ik' = check_cell data newcell in
       ik := !ik lor ik';
-      newcell)
+      newcell
+    )
       conf.unit_cells in
   let conf =
     { conf with
