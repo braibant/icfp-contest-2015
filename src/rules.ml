@@ -72,8 +72,8 @@ module Piece = struct
 
 
   let equal a b =
-    if not a.sorted then Array.sort Cell.compare a.content;
-    if not b.sorted then Array.sort Cell.compare b.content;
+    if not a.sorted then (Array.sort Cell.compare a.content; a.sorted <- true);
+    if not b.sorted then (Array.sort Cell.compare b.content; b.sorted <- true);
     equal_vect a.content b.content 0 (Array.length a.content)
 
   (* independent of the order of elements in the array *)
