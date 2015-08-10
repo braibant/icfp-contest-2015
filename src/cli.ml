@@ -98,8 +98,9 @@ let ai_f filename options tag =
 
 let ai ({filenames; time; memory; phrase_of_power} as options) =
   let tag = String.concat " " ["main"; (Submit.utc_tag ()) ]in
+  let time_per_file = time /. float (List.length filenames) in
   let rec main file =
-    try ai_f file options  tag
+    try ai_f file {options with time = time_per_file}  tag
     with Sys.Break ->
       if !Ia1.max_depth > 0
       then (decr Ia1.max_depth; main file)
