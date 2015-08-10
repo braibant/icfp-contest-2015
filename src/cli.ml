@@ -8,7 +8,6 @@ type options =
   {filenames : string list;
    time: float;
    memory : int option;
-   phrase_of_power : string option;
    submit: bool}
 
 let open_in filename =
@@ -53,7 +52,7 @@ let interactive filename options tag prefix : unit =
   let submit = n = 1 && options.submit in
   Submit.main ~score ~submit ~version:"interactive" problem [output]
 
-let interactive ({filenames; time; memory; phrase_of_power} as options) prefix =
+let interactive ({filenames; time; memory} as options) prefix =
   let tag = String.concat " " ["int"; (Submit.utc_tag ()) ]in
   List.iter (fun f -> interactive f options tag prefix) filenames
 
@@ -96,7 +95,7 @@ let ai_f filename options tag =
 
   Submit.main ~score ~submit:options.submit ~version:Ia1.version problem outputs
 
-let ai ({filenames; time; memory; phrase_of_power} as options) =
+let ai ({filenames; time; memory} as options) =
   let tag = String.concat " " ["main"; (Submit.utc_tag ()) ]in
   let time_per_file = time /. float (List.length filenames) in
   let rec main file =
@@ -113,7 +112,7 @@ let nuke options =
   let filenames = Sys.readdir "problems" |> Array.to_list |> List.sort Pervasives.compare in
   let filenames = List.map (fun s -> "problems/" ^ s) filenames in
   let default_max_depth = !Ia1.max_depth in
-  let time_per_file = time /. float (List.length filenames) in
+  let time_per_file = options.time /. float (List.length filenames) in
   let options = {options with time = time_per_file} in
   let rec main file =
     try ai_f file options  tag
@@ -145,7 +144,7 @@ let memory =
 
 let phrase_of_power =
   let doc = "Phrase of power, as quoted string." in
-  Arg.(value & opt (some string) None & info ["p"] ~doc)
+  Arg.(value & opt_all (string) [] & info ["p"] ~doc)
 
 let submit =
   let doc = "[internal] Submit the output to the scoring server." in
@@ -174,7 +173,12 @@ let options filenames time memory phrase_of_power submit max_depth keeping =
     | None -> default_time_per_problem
     | Some t -> t)
   in
-  {filenames; time; memory; phrase_of_power; submit}
+  List.iter (fun phrase ->
+      if Hashtbl.mem Oracle.phrases_of_power  phrase
+      then ()
+      else Oracle.add_phrase phrase 0
+    ) phrase_of_power;
+  {filenames; time; memory; submit}
 
 let options_t =
   Term.(pure options $ filenames $ time $ memory $ phrase_of_power

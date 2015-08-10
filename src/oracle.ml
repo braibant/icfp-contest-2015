@@ -230,22 +230,29 @@ let gen_pw pw prio =
   done;
   (List.rev !l, pw, prio)
 
+let phrases_of_power =
+  Hashtbl.create 17
+
+let add_phrase pw prio =
+    Hashtbl.add phrases_of_power pw (gen_pw pw prio)
+
+let () =
+  List.iter (fun (pw, prio) -> add_phrase pw prio)
+    ["ia! ia! ",     200;
+     "ei!",          100;
+     "ia! ia!",      80;
+     "r'lyeh",       70;
+     "yuggoth",      60;
+     "yogsothoth",   40;
+     "hastur",       90;
+     "ph'nglui mglw'nafh cthulhu r'lyeh wgah'nagl fhtagn.", 0;
+     "tsathoggua",   40;
+     "necronomicon", 20
+    ]
+
 let empower_power actions data conf =
   Random.init 18;
-  let pw =
-    List.map (fun (pw, prio) -> gen_pw pw prio)
-      ["ia! ia! ",     200;
-       "ei!",          100;
-       "ia! ia!",      80;
-       "r'lyeh",       70;
-       "yuggoth",      60;
-       "yogsothoth",   40;
-       "hastur",       90;
-       "ph'nglui mglw'nafh cthulhu r'lyeh wgah'nagl fhtagn.", 0;
-       "tsathoggua",   40;
-       "necronomicon", 20
-      ]
-  in
+  let pw = Hashtbl.fold (fun _ x acc -> x :: acc) phrases_of_power [] in
   let simple_act =
     [W,"p"; E,"b"; CW,"d"; CCW,"k"; SW,"a"; SE,"l"]
   in
