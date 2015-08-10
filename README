@@ -38,3 +38,9 @@ are valid links for the executable that play the game. Consult the
 help page these binaries (./cli.native -h for instance) to see the
 available options (we have a GUI that makes it possible to play the
 game interactively)
+
+# IMPORTANT NOTE
+
+We have tagged the final release of our code, as submitted (tag final on this git repository). However, after the deadline, we realised that it was maybe the case that the program needed to output its results on the standard output. 
+
+Currently, our program outputs the solutions to problem $id in `outputs/$id/$tag.json`. We also collate all the outputs in one big file at `outputs/scoreboard` (accessing this file from multiple process might be an issue, as accesses are not locked). The good way to get all the results from our program would be to read all the json files in `outputs`.  
