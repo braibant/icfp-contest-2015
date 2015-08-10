@@ -1,9 +1,12 @@
 let () = Sys.catch_break true
 
+let default_time_per_problem = 120
+(* let default_time_per_problem = 1200 *)
+
 (* solver's code *)
 type options =
   {filenames : string list;
-   number: int option;
+   time: float;
    memory : int option;
    phrase_of_power : string option;
    submit: bool}
@@ -25,55 +28,50 @@ let make_output problem seed solution tag =
     solution
   }
 
-let options filenames number memory phrase_of_power submit max_depth keeping =
-  begin match max_depth with
-    | None -> ()
-    | Some max_depth ->  Ia1.max_depth := max_depth end;
-  begin match keeping with
-    | None -> ()
-    | Some keeping ->  Ia1.keeping := keeping end;
-  {filenames; number; memory; phrase_of_power; submit}
 
 
 (** Interactive *)
 let interactive filename options tag prefix : unit =
   let problem = open_in filename in
   let n = (List.length problem.Formats_t.sourceSeeds) in
-  let seed =
+  let seed_id =
     if n > 1
     then begin
-      Printf.printf "Number of seeds:%i\nSeed number (1 - %i)?" n n;
-      int_of_string (read_line ()) - 1
+      Printf.printf "Number of seeds:%i\nSeed number (0 - %i)?" n (n - 1);
+      int_of_string (read_line ())
     end
     else 0
   in
-  let data,init = Rules.init problem seed in
+  let data,init = Rules.init ~time:options.time problem ~seed_id in
   let score, commands = Simulator.interactive ~prefix data init in
   let solution =
     if String.length prefix = 0 then Oracle.empower_power commands data init
     else Oracle.empower_prefix commands prefix
   in
-  let seed = List.nth problem.Formats_j.sourceSeeds seed in
+  let seed = List.nth problem.Formats_j.sourceSeeds seed_id in
   let output = make_output problem seed solution tag in
   let submit = n = 1 && options.submit in
   Submit.main ~score ~submit ~version:"interactive" problem [output]
 
-let interactive ({filenames; number; memory; phrase_of_power} as options) prefix =
+let interactive ({filenames; time; memory; phrase_of_power} as options) prefix =
   let tag = String.concat " " ["int"; (Submit.utc_tag ()) ]in
   List.iter (fun f -> interactive f options tag prefix) filenames
 
 (** AI  *)
-
 let ai_f filename options tag =
   let problem = open_in filename in
+  let time_per_seed = options.time /. float (List.length problem.Formats_t.sourceSeeds) in
+  Ia1.reset ();
   let solve seed_id seed =
-    Printf.printf "Problem %i, seed %i (%i/%i)-- length %i\n%!"
+    Printf.printf "Problem %i, seed %i (%i/%i)-- length %i (depth %i)\n%!"
       problem.Formats_t.id
       seed
       seed_id
       (List.length problem.Formats_t.sourceSeeds -1 )
-      problem.Formats_t.sourceLength;
-    let data, init = Rules.init problem seed_id in
+      problem.Formats_t.sourceLength
+      !Ia1.max_depth
+    ;
+    let data, init = Rules.init problem ~time:time_per_seed ~seed_id in
     let state = ref init in
     let n = ref 0 in
     try
@@ -98,7 +96,7 @@ let ai_f filename options tag =
 
   Submit.main ~score ~submit:options.submit ~version:Ia1.version problem outputs
 
-let ai ({filenames; number; memory; phrase_of_power} as options) =
+let ai ({filenames; time; memory; phrase_of_power} as options) =
   let tag = String.concat " " ["main"; (Submit.utc_tag ()) ]in
   let rec main file =
     try ai_f file options  tag
@@ -134,7 +132,7 @@ let filenames =
   let doc = "File containing JSON encoded input." in
   Arg.(value & opt_all (file) [] & info ["f"]  ~doc)
 
-let number =
+let time =
   let doc = "Time limit, in seconds, to produce output." in
   Arg.(value & opt (some int) None & info ["t"] ~doc)
 
@@ -162,8 +160,21 @@ let keeping =
   let doc = "[internal] Width of the search." in
   Arg.(value & opt (some int) None & info ["width"] ~doc)
 
+let options filenames time memory phrase_of_power submit max_depth keeping =
+  begin match max_depth with
+    | None -> ()
+    | Some max_depth ->  Ia1.max_depth := max_depth end;
+  begin match keeping with
+    | None -> ()
+    | Some keeping ->  Ia1.keeping := keeping end;
+  let time = float (match time with
+    | None -> default_time_per_problem
+    | Some t -> t)
+  in
+  {filenames; time; memory; phrase_of_power; submit}
+
 let options_t =
-  Term.(pure options $ filenames $ number $ memory $ phrase_of_power
+  Term.(pure options $ filenames $ time $ memory $ phrase_of_power
         $ submit
         $ max_depth
         $ keeping )

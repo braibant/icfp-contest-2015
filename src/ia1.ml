@@ -1,7 +1,3 @@
-let version = "0.4-jh"
-let max_depth = ref 15
-let keeping = ref 10
-
 open Rules
 
 type full_conf =
@@ -10,11 +6,28 @@ type full_conf =
 
 type t = (full_conf * Rules.action list) list
 
+let version = "0.4-jh"
+let max_depth = ref 15
+let keeping = ref 10
+
+(* used to fine tune the parameters, based on how fast we go *)
+let total_time = ref 0.
+let turns = ref 0
+
 let find_reachable_states_mem =
   Rules.HashConfig.create 17
 
 let find_reachable_states_mark =
   ref 0
+
+let reset () =
+  Rules.HashConfig.reset find_reachable_states_mem;
+  find_reachable_states_mark := 0;
+  total_time := 0.;
+  turns := 0
+
+
+(* ************************************************************************ *)
 
 let clear_old_elements () =
   let q = Queue.create () in
@@ -180,43 +193,7 @@ let heuristic_score data config =
   | Cont config ->
     Heuristics.simple data config
 
-
-(* let best_heuristic_score_mem = *)
-(*   Rules.HashConfig.create 17 *)
-
-(* let rec best_heuristic_score data conf = function *)
-(*   | 0 -> heuristic_score data conf *)
-(*   | depth -> *)
-(*     match conf with *)
-(*     | End _ -> heuristic_score data conf *)
-(*     | Cont conf -> *)
-(*       try *)
-(*         Rules.HashConfig.find best_heuristic_score_mem conf *)
-(*       with Not_found -> *)
-(*         let next = find_reachable_states data conf in *)
-(*         Printf.printf "At depth %i, %i possible choices\n%!" (!max_depth - depth) (List.length next); *)
-(*         let res = *)
-(*           List.fold_left (fun acc (conf, _) -> *)
-(*               let score = best_heuristic_score data conf (depth-1) in *)
-(*               max acc score) min_int next *)
-(*         in *)
-(*         Rules.HashConfig.replace best_heuristic_score_mem conf res; *)
-(*         res *)
-
-
-
-(* let rec play data conf = *)
-(*   let next = find_reachable_states data conf in *)
-(*   let (_, path) = *)
-(*     List.fold_left (fun ((scoremax, pathmax) as acc) (conf,path) -> *)
-(*       let score = best_heuristic_score data conf !max_depth in *)
-(*       if score <= scoremax then acc *)
-(*       else (score, path) *)
-(*     ) (min_int, []) next *)
-(*   in *)
-(*   HashConfig.clear best_heuristic_score_mem; *)
-(*   HashConfig.clear find_reachable_states_mem; *)
-(*   List.fold_left (play_action data) conf (List.rev path) *)
+(* ************************************************************************ *)
 
 
 (* compute the best outcome in the given set *)
@@ -296,7 +273,7 @@ let breadth data next ~depth ~keeping =
       pick_best data next
     | depth ->
       let depth = depth - 1 in
-      (* Printf.printf "Size %i (keeping %i)\n%!" (List.length next) keeping; *)
+      Printf.printf "Size %i (keeping %i)\n%!" (List.length next) keeping;
       let next = best_candidates (heuristic_score data) ~keeping:(keeping + 2*depth) next in
       let next = increase_depth data next in
       let next = dedup next in
@@ -304,9 +281,41 @@ let breadth data next ~depth ~keeping =
   in
   breadth  ~depth ~keeping next
 
-let rec play data conf =
+(* ************************************************************************ *)
+
+let  play data conf =
+  let start = Unix.gettimeofday () in
   let next = find_reachable_states data conf in
   let (_,path) = breadth data next !max_depth !keeping in
   clear_old_elements ();
+  let spent = Unix.gettimeofday () -. start in
+
+  (* increment the total time *)
+  total_time := !total_time +. spent;
+  incr turns;
+  if !turns > 0 then
+    begin
+    let mean = !total_time /. float !turns  in
+    Printf.printf "Mean time per turn %f, max_depth %i\n%!" mean !max_depth
+    end;
+
+  let open Rules in
+  if !turns > 2
+  then
+    begin
+      if !total_time +. float (Rules.source_length data  - !turns) *. spent > Rules.time data
+         && !max_depth > 5
+      then begin
+
+        Printf.printf "decr (%i)" !max_depth; decr max_depth;
+      end;
+      if !total_time +. float (Rules.source_length data - !turns) *. spent <  0.8 *. Rules.time data
+         && !max_depth < 20
+      then
+        begin
+          Printf.printf "incr (%i)" !max_depth; incr max_depth;
+        end;
+    end;
+
   incr find_reachable_states_mark;
   List.fold_left (play_action data) conf (List.rev path)

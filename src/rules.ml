@@ -118,6 +118,7 @@ type data =
     coord_of_bit : (int * int) array;
     cell_of_bit : Cell.t array;
     units: (Piece.t * Cell.t) array;
+    time: float;                   (* time in second allocated for one seed. *)
   }
 
 module Data = struct
@@ -151,7 +152,7 @@ module Data = struct
     (members, pivot)
 end
 
-let build_data input =
+let build_data ~time input =
   let height =  input.Formats_t.height in
   let width =  input.Formats_t.width in
   {input;
@@ -159,7 +160,8 @@ let build_data input =
    width;
    coord_of_bit = Array.init (width * height) (Data.coord_of_bit width);
    cell_of_bit = Array.init (width * height) (Data.cell_of_bit width);
-   units = Array.map (Data.center_unit width height) (Array.of_list input.units)
+   units = Array.map (Data.center_unit width height) (Array.of_list input.units);
+   time
   }
 
 (** Memoized data  *)
@@ -176,6 +178,8 @@ let create_bitv data = Bitv.create (data.width*data.height) false
 let number_of_units data = Array.length data.units
 let get_unit data id = data.units.(id)
 let units data = data.units
+let source_length data = data.input.sourceLength
+let time data = data.time
 
 module HashableConfig =
 struct
@@ -375,7 +379,7 @@ let lock data conf act =
   spawn_unit data conf act
 
 
-let init pb ~seed_id =
+let init pb ~seed_id  ~time =
   let conf =
     { full_cells = Bitv.create 0 false;
       unit_cells = Piece.empty;
@@ -388,7 +392,7 @@ let init pb ~seed_id =
       commands = [];
       mark = 0}
   in
-  let data = build_data pb in
+  let data = build_data  ~time pb in
   let conf = { conf with
                full_cells =
                  Bitv.of_list_with_length
@@ -429,8 +433,8 @@ let play_str commands data config =
   !conf
 
 
-let check_game commands pb seed_id =
-  let data, conf = (init pb ~seed_id) in
+let check_game commands pb  seed_id =
+  let data, conf = (init pb ~time:1000. ~seed_id) in
   let conf = ref conf in
   let history = HashConfig.create 17 in
   let valid = ref true in
