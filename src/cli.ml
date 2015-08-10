@@ -1,7 +1,7 @@
 let () = Sys.catch_break true
 
 (* let default_time_per_run = 120 *)
-let default_time_per_run = 3600
+let default_time_per_run = 7200
 
 (* solver's code *)
 type options =

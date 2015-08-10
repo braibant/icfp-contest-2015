@@ -9,4 +9,4 @@ clean:
 
 VERSION=$(shell git log --pretty=format:'%h' -n 1)
 archive:
-	git archive --format zip master -o lightning-$(VERSION).zip
+	git archive --format zip master -o final-$(VERSION).zip
