@@ -2,10 +2,39 @@
 
 Our code is written in OCaml. We have implemented the core rules, a
 scoring system, and a command line interface for the game. Our AI is
-quite simple, with a few heuristic to compute moves.
+quite simple, with a few heuristic to score moves. The AI is basically
+a breadth first search, which keeps a set of good move candidates and
+explore the reachable states from those. Then, it picks the k-moves
+that score the best from the reachable states and continue the search
+with those.  After n iterations of this process (i.e., when we have
+computed the outcomes of the n next moves), we rank the moves at level
+1, according to the best outcome that we found, and play the best
+move.
+
+(The most time intensive step of this process is the computation of
+the next possible moves, given a configuration. Therefore, we took
+some care to memoize those computations. We also fine-tuned the
+representation of the configurations, using bit vectors and sparse
+representations where appropriate.)
+
+Finally, given a play (a sequence of positions where the pieces are
+locked), we use an oracle to change the moves so that the starting
+point of the piece and the final position remain the same, while using
+words of power if possible.
+
+We do not take into account the memory limit at all. However, we try
+to fine tune the depth of our search, based on the amount of time
+spent in each turn.
 
 # Running our code
 
 We use:
 - ocaml 4.02.1
 - the packages ocamlfind, atdgen, bitv, ocurl, cmdliner
+- ocamlbuild
+
+Just do make in the main repository, then, cli.native or play_icfp2015
+are valid links for the executable that play the game. Consult the
+help page these binaries (./cli.native -h for instance) to see the
+available options (we have a GUI that makes it possible to play the
+game interactively)

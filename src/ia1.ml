@@ -6,7 +6,7 @@ type full_conf =
 
 type t = (full_conf * Rules.action list) list
 
-let version = "0.4-jh"
+let version = "0.5"
 let max_depth = ref 15
 let keeping = ref 10
 
