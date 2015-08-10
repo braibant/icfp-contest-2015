@@ -25,7 +25,10 @@ let make_output problem seed solution tag =
     solution
   }
 
-let options filenames number memory phrase_of_power submit =
+let options filenames number memory phrase_of_power submit max_depth =
+  begin match max_depth with
+    | None -> ()
+    | Some max_depth ->  Ia1.max_depth := max_depth end;
   {filenames; number; memory; phrase_of_power; submit}
 
 
@@ -141,15 +144,19 @@ let phrase_of_power =
   Arg.(value & opt (some string) None & info ["p"] ~doc)
 
 let submit =
-  let doc = "Submit the output to the scoring server" in
+  let doc = "[internal] Submit the output to the scoring server." in
   Arg.(value & flag & info ["score"] ~doc)
 
 let prefix =
-  let doc = "String to be played interactively" in
+  let doc = "[internal] String to be played interactively." in
   Arg.(value & opt (string) "" & info ["prefix"] ~doc)
 
+let max_depth =
+  let doc = "[internal] Max depth of the search." in
+  Arg.(value & opt (some int) None & info ["depth"] ~doc)
+
 let options_t =
-  Term.(pure options $ filenames $ number $ memory $ phrase_of_power $ submit)
+  Term.(pure options $ filenames $ number $ memory $ phrase_of_power $ submit $ max_depth)
 
 (* Interavtive mode *)
 let interactive_t =
