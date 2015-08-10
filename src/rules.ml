@@ -56,11 +56,49 @@ struct
     | _ -> assert false
 end
 
-(* TODO : loops *)
+module Piece = struct
+
+  type t = {content : Cell.t array; mutable sorted: bool}
+
+  let cells t = t.content
+
+  let rec equal_vect (a: Cell.t array) b i n =
+    if i = n
+    then true
+    else
+      let (xa,ya) = a.(i) in
+      let (xb,yb) = b.(i) in
+      xa == xb && ya == yb && equal_vect a b (i + 1) n
+
+
+  let equal a b =
+    if not a.sorted then Array.sort Cell.compare a.content;
+    if not b.sorted then Array.sort Cell.compare b.content;
+    equal_vect a.content b.content 0 (Array.length a.content)
+
+  (* independent of the order of elements in the array *)
+  let hash a =
+    let r = ref 0 in
+    let a = a.content in
+    for i = 0 to Array.length a - 1 do
+      let x,y = a.(i) in
+      r := !r + x lsl 8 + y
+    done;
+    !r
+
+  let length a = Array.length a.content
+
+  let of_list l =
+    let a = Array.of_list l in
+    Array.sort Cell.compare a;
+    {content = a; sorted = true}
+
+  let empty = {content = [| |]; sorted = true}
+end
 
 type config =  {
   full_cells : Bitv.t;
-  unit_cells : Cell.t array;
+  unit_cells : Piece.t;
   unit_pivot : Cell.t;
   rng_state : Int32.t;
   unit_no : int;
@@ -79,7 +117,7 @@ type data =
     height : int;
     coord_of_bit : (int * int) array;
     cell_of_bit : Cell.t array;
-    units: (Cell.t array * Cell.t) array;
+    units: (Piece.t * Cell.t) array;
   }
 
 module Data = struct
@@ -108,7 +146,7 @@ module Data = struct
     in
     let members = List.map shift_x members
     and pivot = shift_x pivot in
-    let members = Array.of_list ( List.map Cell.of_coord members)
+    let members = Piece.of_list ( List.map Cell.of_coord members)
     and pivot = Cell.of_coord pivot in
     (members, pivot)
 end
@@ -146,17 +184,13 @@ struct
     config1.unit_no = config2.unit_no
     && config1.unit_pivot = config2.unit_pivot
     && Bitv.equal config1.full_cells config2.full_cells
-    && config1.unit_cells = config2.unit_cells
+    && Piece.equal config1.unit_cells config2.unit_cells
     (* && Bitv.equal config1.unit_cells config2.unit_cells *)
 
-  let hash config =
-    Hashtbl.hash (Bitv.hash config.full_cells,
-                  Hashtbl.hash config.unit_cells,
-                  config.unit_pivot, config.unit_no)
 
   let hash config =
     Hashtbl.hash (Bitv.hash config.full_cells,
-                  Hashtbl.hash config.unit_cells,
+                  Piece.hash config.unit_cells,
                   config.unit_pivot, config.unit_no)
 
 end
@@ -178,7 +212,7 @@ let unit_overlap data conf =
   let r = unit_overlap_flag in
   r := false;
   let n = Bitv.length conf.full_cells in
-  let unit = conf.unit_cells in
+  let unit = conf.unit_cells.Piece.content in
   let full = conf.full_cells in
   for i = 0 to Array.length unit - 1 do
     let cell = unit.(i) in
@@ -210,7 +244,7 @@ let ik = ref valid
 let move data dir conf =
   let delta = Cell.delta_of_move dir in
   ik := valid;
-  let old = conf.unit_cells in
+  let old = conf.unit_cells.Piece.content in
   let n = (Array.length old) in
   let unit_cells = Array.make n (0,0) in
   for i = 0 to  n - 1 do
@@ -223,7 +257,7 @@ let move data dir conf =
   (* Array.map (move_cell data delta) conf.unit_cells in *)
   let conf =
     { conf with
-      unit_cells;
+      unit_cells = Piece.{content = unit_cells; sorted = false};
       unit_pivot = Cell.(delta + conf.unit_pivot);
       commands = dir::conf.commands }
   in
@@ -241,10 +275,10 @@ let move_back data dir conf =
       ik := !ik lor ik';
       newcell
     )
-      conf.unit_cells in
+      conf.unit_cells.Piece.content in
   let conf =
     { conf with
-      unit_cells;
+      unit_cells = Piece.{content = unit_cells; sorted = false};
       unit_pivot = Cell.(conf.unit_pivot - delta);
       commands = [] }
   in
@@ -259,9 +293,9 @@ let rotate_unit data unit pivot dir =
       let ik' = check_cell data newcell in
       ik := !ik lor ik';
       newcell)
-    unit
+    unit.Piece.content
   in
-  !ik, unit_cells
+  !ik, Piece.{content = unit_cells; sorted = false}
 
 let rotate data dir conf =
   let is_valid, unit_cells = rotate_unit data conf.unit_cells conf.unit_pivot dir in
@@ -307,9 +341,9 @@ let spawn_unit data conf act =
   else conf
 
 let lock data conf act =
-  let size = Array.length  conf.unit_cells in
+  let size = Piece.length  conf.unit_cells in
   let full_cells = Bitv.copy conf.full_cells in
-  Array.iter (fun cell -> Bitv.set full_cells (bit_of_cell data cell) true) conf.unit_cells;
+  Array.iter (fun cell -> Bitv.set full_cells (bit_of_cell data cell) true) conf.unit_cells.Piece.content;
   let conf = ref {conf with full_cells = full_cells}  in
   let ls = ref 0 in
   for r = 0 to  height data -1 do
@@ -344,7 +378,7 @@ let lock data conf act =
 let init pb ~seed_id =
   let conf =
     { full_cells = Bitv.create 0 false;
-      unit_cells = [||];
+      unit_cells = Piece.empty;
       unit_pivot = Cell.make (0, 0);
       rng_state = Int32.of_int (List.nth pb.sourceSeeds seed_id);
       unit_no = -1;

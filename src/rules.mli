@@ -13,9 +13,17 @@ module Cell :
     val delta_of_move : action -> t
   end
 
+module Piece :
+  sig
+    type t
+    val equal : t -> t -> bool
+    val hash : t -> int
+    val cells : t -> Cell.t array
+  end
+
 type config = {
   full_cells : Bitv.t;
-  unit_cells : Cell.t array;
+  unit_cells : Piece.t;
   unit_pivot : Cell.t;
   rng_state : Int32.t;
   unit_no : int;
@@ -36,8 +44,8 @@ val bit_of_cell: data -> Cell.t -> int
 val coord_of_bit: data -> int -> int*int
 val cell_of_bit: data -> int -> Cell.t
 val create_bitv: data -> Bitv.t
-val units: data -> (Cell.t array * (int * int)) array
-val rotate_unit: data -> Cell.t array -> int * int -> action -> Cell.t array
+val units: data -> (Piece.t * Cell.t) array
+val rotate_unit: data -> Piece.t -> Cell.t -> action -> Piece.t
 val cells_of_bitv : data -> Bitv.t -> Cell.t list
 
 
