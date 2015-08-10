@@ -1,6 +1,6 @@
 let version = "0.4-jh"
 let max_depth = ref 15
-
+let keeping = ref 10
 
 open Rules
 
@@ -306,8 +306,7 @@ let breadth data next ~depth ~keeping =
 
 let rec play data conf =
   let next = find_reachable_states data conf in
-  let (_,path) = breadth data next !max_depth 10 in
-  (* HashConfig.clear find_reachable_states_mem; *)
+  let (_,path) = breadth data next !max_depth !keeping in
   clear_old_elements ();
   incr find_reachable_states_mark;
   List.fold_left (play_action data) conf (List.rev path)
