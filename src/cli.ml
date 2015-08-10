@@ -183,13 +183,6 @@ let show_info =
   let doc = "Our score" in
   Term.info "score" ~doc
 
-let meta_t =
-  Term.(pure Meta.meta $ options_t)
-
-let meta_info =
-  let doc = "Our wonderful automated optimizer" in
-  Term.info "meta" ~doc
-
 
 let commands =
   [
@@ -197,7 +190,6 @@ let commands =
     ai_t, ai_info;
     nuke_t, nuke_info;
     show_t, show_info;
-    meta_t, meta_info
   ]
 
 (* let default = interactive_t, interactive_info *)
