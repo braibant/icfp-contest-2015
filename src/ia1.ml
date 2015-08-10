@@ -25,35 +25,23 @@ let clear_old_elements () =
   Queue.iter (Rules.HashConfig.remove find_reachable_states_mem) q
 
 
+(* Hash type for a complete piece *)
 module HashablePiece = struct
-
-
-  let rec equal_vect (a: Cell.t array) b i n =
-    if i = n
-    then true
-    else
-      let (xa,ya) = a.(i) in
-      let (xb,yb) = b.(i) in
-      xa == xb && ya == yb && equal_vect a b (i + 1) n
-
-  type t = Cell.t array * (int * int)
+  type t = Piece.t * (int * int)
 
   let equal : t -> t -> bool = fun (av, (ax,ay)) (bv, (bx,by)) ->
-    (ax: int) = bx && (ay : int) = by && equal_vect av bv 0 (Array.length av)
+    (ax: int) = bx && (ay : int) = by && Rules.Piece.equal av bv
 
   let hash (av,(ax,ay)) =
-    (Hashtbl.hash av lsl 32 + ax  lsl 16 + ay) land max_int
+    (Rules.Piece.hash av lsl 32 + ax  lsl 16 + ay) land max_int
 end
 module HashPiece = Hashtbl.Make(HashablePiece)
 
+(* Hash type that looks only for the full cells. *)
 module HashableConfigPiece = struct
   type t = Rules.config
 
-  let equal a b =
-    Bitv.equal a.full_cells b.full_cells
-    (* let (ax,ay) = a.unit_pivot in *)
-    (* let (bx,by) = b.unit_pivot in *)
-    (* ax = bx && ay = by && Bitv.equal a.unit_cells b.unit_cells *)
+  let equal a b = Bitv.equal a.full_cells b.full_cells
   let hash a =  Bitv.hash a.full_cells
 end
 module HashConfigPiece= Hashtbl.Make(HashableConfigPiece);;

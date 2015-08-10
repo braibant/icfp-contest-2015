@@ -70,7 +70,7 @@ let draw_config data config =
     (* Printf.printf "x:%i  y:%i\n" x y; *)
     draw_hex data x y t in
   Bitv.iteri_true (fun bit -> f Full (Rules.cell_of_bit data bit)) config.full_cells;
-  Array.iter (fun cell  -> f Unit cell) config.unit_cells;
+  Array.iter (fun cell  -> f Unit cell) (Rules.Piece.cells config.unit_cells);
   f Pivot config.unit_pivot
 ;;
 
