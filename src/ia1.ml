@@ -1,5 +1,5 @@
 let version = "0.4-jh"
-let max_depth = ref 20
+let max_depth = ref 15
 
 
 open Rules
