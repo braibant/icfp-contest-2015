@@ -58,7 +58,7 @@ let interactive ({filenames; number; memory; phrase_of_power} as options) prefix
 
 (** AI  *)
 
-let ai_f filename options weights tag =
+let ai_f filename options tag =
   let problem = open_in filename in
   let solve seed_id seed =
     Printf.printf "Problem %i, seed %i (%i/%i)-- length %i\n%!"
@@ -95,7 +95,7 @@ let ai_f filename options weights tag =
 let ai ({filenames; number; memory; phrase_of_power} as options) =
   let tag = String.concat " " ["main"; (Submit.utc_tag ()) ]in
   let rec main file =
-    try ai_f file options Heuristics.hand_tuned tag
+    try ai_f file options  tag
     with Sys.Break ->
       if !Ia1.max_depth > 0
       then (decr Ia1.max_depth; main file)
@@ -109,7 +109,7 @@ let nuke options =
   let filenames = List.map (fun s -> "problems/" ^ s) filenames in
   let default_max_depth = !Ia1.max_depth in
   let rec main file =
-    try ai_f file options Heuristics.hand_tuned tag
+    try ai_f file options  tag
     with Sys.Break ->
       if !Ia1.max_depth > 0
       then (decr Ia1.max_depth; main file)

@@ -53,19 +53,3 @@ let signals =
 
 let simple data config =
   (* heuristic_base data config  +  *) score data config + heuristic_line data config
-
-let meta weights data config : int =
-  let acc = ref 0. in
-  Array.iteri (fun i (x,l) ->
-      if abs_float weights.(i) < 0.01
-      then ()
-      else acc := !acc +. weights.(i) *. float (x data config)) signals;
-  int_of_float !acc
-
-(* random vector *)
-let init () =
-  assert false;                         (* Make sure everything is deterministic *)
-  Array.map (fun _ -> Random.float 10. -. 5.) signals
-
-let hand_tuned =
-  [| 1.0; 0.0; 1.0; 1.0|]
