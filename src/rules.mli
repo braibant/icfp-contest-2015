@@ -1,25 +1,21 @@
-type move_dir = E | W | SE | SW
-type turn_dir = CW | CCW
-type action =
-| Turn of turn_dir
-| Move of move_dir
+type action =  E | W | SE | SW | CW | CCW
 
 module Cell :
   sig
-    type t =  int * int
+    type t = int * int
     val compare : t -> t -> int
     val of_coord : int * int -> t
     val to_coord : t -> int * int
     val ( + ) : t -> t -> t
     val ( - ) : t -> t -> t
     val ( ~- ) : t -> t
-    val rotate : turn_dir -> t -> t
-    val delta_of_move : move_dir -> t
+    val rotate : action -> t -> t
+    val delta_of_move : action -> t
   end
 
 type config = {
   full_cells : Bitv.t;
-  unit_cells : Bitv.t;
+  unit_cells : Cell.t array;
   unit_pivot : Cell.t;
   rng_state : Int32.t;
   unit_no : int;
@@ -40,8 +36,8 @@ val bit_of_cell: data -> Cell.t -> int
 val coord_of_bit: data -> int -> int*int
 val cell_of_bit: data -> int -> Cell.t
 val create_bitv: data -> Bitv.t
-val units: data -> (Bitv.t * (int * int)) array
-val rotate_unit: data -> Bitv.t -> int * int -> turn_dir ->  Bitv.t
+val units: data -> (Cell.t array * (int * int)) array
+val rotate_unit: data -> Cell.t array -> int * int -> action -> Cell.t array
 val cells_of_bitv : data -> Bitv.t -> Cell.t list
 
 
@@ -62,14 +58,14 @@ exception Invalid_conf of invalid_kind
 exception End of int * action list
 
 (** {2 Internal functions}  *)
-val move : data -> move_dir -> config -> config
-val rotate : data -> turn_dir -> config -> config
+val move : data -> action -> config -> config
+val rotate : data -> action -> config -> config
 val check_cell : data -> Cell.t -> int
 val lock : data -> config -> action option -> config
 
 (** These function clear the commands field. *)
-val move_back : data -> move_dir -> config -> config
-val rotate_back : data -> turn_dir -> config -> config
+val move_back : data -> action -> config -> config
+val rotate_back : data -> action -> config -> config
 
 (** {2 Main functions }  *)
 
