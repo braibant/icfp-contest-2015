@@ -47,7 +47,8 @@ val create_bitv: data -> Bitv.t
 val units: data -> (Piece.t * Cell.t) array
 val rotate_unit: data -> Piece.t -> Cell.t -> action -> Piece.t
 val cells_of_bitv : data -> Bitv.t -> Cell.t list
-
+val source_length : data -> int
+val time : data -> float         (* time per problem *)
 
 (* Only full_cells, unit_cells, unit_pivot, unit_no *)
 module HashableConfig : Hashtbl.HashedType with type t = config
@@ -87,4 +88,4 @@ val play_str : Formats_t.commands -> data -> config -> config
 val check_game : Formats_t.commands -> Formats_t.input -> int -> bool
 
 (** Initialize the game  *)
-val init : Formats_t.input -> seed_id:int -> data * config
+val init : Formats_t.input -> seed_id:int -> time:float ->  data * config
