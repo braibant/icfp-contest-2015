@@ -1,7 +1,7 @@
 let () = Sys.catch_break true
 
-let default_time_per_problem = 120
-(* let default_time_per_problem = 1200 *)
+(* let default_time_per_run = 120 *)
+let default_time_per_run = 1200
 
 (* solver's code *)
 type options =
@@ -170,7 +170,7 @@ let options filenames time memory phrase_of_power submit max_depth keeping =
     | None -> ()
     | Some keeping ->  Ia1.keeping := keeping end;
   let time = float (match time with
-    | None -> default_time_per_problem
+    | None -> default_time_per_run
     | Some t -> t)
   in
   List.iter (fun phrase ->
