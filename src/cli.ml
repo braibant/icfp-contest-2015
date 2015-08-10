@@ -113,6 +113,8 @@ let nuke options =
   let filenames = Sys.readdir "problems" |> Array.to_list |> List.sort Pervasives.compare in
   let filenames = List.map (fun s -> "problems/" ^ s) filenames in
   let default_max_depth = !Ia1.max_depth in
+  let time_per_file = time /. float (List.length filenames) in
+  let options = {options with time = time_per_file} in
   let rec main file =
     try ai_f file options  tag
     with Sys.Break ->
