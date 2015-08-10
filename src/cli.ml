@@ -25,10 +25,13 @@ let make_output problem seed solution tag =
     solution
   }
 
-let options filenames number memory phrase_of_power submit max_depth =
+let options filenames number memory phrase_of_power submit max_depth keeping =
   begin match max_depth with
     | None -> ()
     | Some max_depth ->  Ia1.max_depth := max_depth end;
+  begin match keeping with
+    | None -> ()
+    | Some keeping ->  Ia1.keeping := keeping end;
   {filenames; number; memory; phrase_of_power; submit}
 
 
@@ -155,8 +158,15 @@ let max_depth =
   let doc = "[internal] Max depth of the search." in
   Arg.(value & opt (some int) None & info ["depth"] ~doc)
 
+let keeping =
+  let doc = "[internal] Width of the search." in
+  Arg.(value & opt (some int) None & info ["width"] ~doc)
+
 let options_t =
-  Term.(pure options $ filenames $ number $ memory $ phrase_of_power $ submit $ max_depth)
+  Term.(pure options $ filenames $ number $ memory $ phrase_of_power
+        $ submit
+        $ max_depth
+        $ keeping )
 
 (* Interavtive mode *)
 let interactive_t =
